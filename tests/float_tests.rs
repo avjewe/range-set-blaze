@@ -5,18 +5,29 @@
 
 use num_traits::identities::One;
 #[cfg(feature = "total_float_nightly_experimental")]
-use range_set_blaze::TotalF16;
+use range_set_blaze::{TotalF16, TotalF128, FiniteF16, FiniteF128};
 #[cfg(feature = "total_float_nightly_experimental")]
-use range_set_blaze::total::tf16;
+use range_set_blaze::UIntPlusOne;
+#[cfg(feature = "total_float_nightly_experimental")]
+use range_set_blaze::total::{tf16, tf128};
+#[cfg(feature = "total_float_nightly_experimental")]
+use range_set_blaze::finite::{ff16, ff128};
 use range_set_blaze::total::{tf32, tf64};
-use range_set_blaze::{Integer, RangeMapBlaze, RangeSetBlaze, TotalF32, TotalF64};
+use range_set_blaze::finite::{ff32, ff64};
+use range_set_blaze::{Integer, RangeMapBlaze, RangeSetBlaze, TotalF32, TotalF64, FiniteF32, FiniteF64};
 use syntactic_for::syntactic_for;
+
+const BIG_ZERO : UIntPlusOne::<u128> = UIntPlusOne::<u128>::UInt(0);
+const BIG_ONE : UIntPlusOne::<u128> = UIntPlusOne::<u128>::UInt(1);
 
 #[test]
 fn map_complement0() {
     assert!(0.0 == -0.0);
     assert_eq!(0.0, -0.0);
-    assert!(tf64(0.0) != tf64(-0.0));
+    assert_ne!(tf64(0.0), tf64(-0.0));
+    assert_eq!(ff64(0.0), ff64(-0.0));
+    assert_ne!(tf32(0.0), tf32(-0.0));
+    assert_eq!(ff32(0.0), ff32(-0.0));
 
     let empty = RangeMapBlaze::<TotalF64, u8>::new();
     assert_eq!(empty.len(), 0);
@@ -29,6 +40,57 @@ fn map_complement0() {
     assert_eq!(empty.len(), 0);
     let full = !&empty;
     assert_eq!(full.len(), i64::from(u32::MAX) + 1);
+    let empty = !&full;
+    assert_eq!(empty.len(), 0);
+
+    let empty = RangeMapBlaze::<FiniteF64, u8>::new();
+    assert_eq!(empty.len(), 0);
+    let full = !&empty;
+    assert_eq!(full.len(), i128::from(0xFFE0000000000000u64));
+    let empty = !&full;
+    assert_eq!(empty.len(), 0);
+
+    let empty = RangeMapBlaze::<FiniteF32, u8>::new();
+    assert_eq!(empty.len(), 0);
+    let full = !&empty;
+    assert_eq!(full.len(), i64::from(0xFF000000u32));
+    let empty = !&full;
+    assert_eq!(empty.len(), 0);
+}
+
+#[test]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn map_complement0_nightly() {
+    assert_ne!(tf16(0.0), tf16(-0.0));
+    assert_eq!(ff16(0.0), ff16(-0.0));
+    assert_ne!(tf128(0.0), tf128(-0.0));
+    assert_eq!(ff128(0.0), ff128(-0.0));
+
+    let empty = RangeMapBlaze::<TotalF128, u8>::new();
+    assert_eq!(empty.len(), BIG_ZERO);
+    let full = !&empty;
+    assert_eq!(full.len(),  UIntPlusOne::<u128>::MaxPlusOne);
+    let empty = !&full;
+    assert_eq!(empty.len(), BIG_ZERO);
+
+    let empty = RangeMapBlaze::<TotalF16, u8>::new();
+    assert_eq!(empty.len(), 0);
+    let full = !&empty;
+    assert_eq!(full.len(), i32::from(u16::MAX) + 1);
+    let empty = !&full;
+    assert_eq!(empty.len(), 0);
+
+    let empty = RangeMapBlaze::<FiniteF128, u8>::new();
+    assert_eq!(empty.len(), BIG_ZERO);
+    let full = !&empty;
+    assert_eq!(full.len(), UIntPlusOne::<u128>::UInt(0xFFFE0000000000000000000000000000u128));
+    let empty = !&full;
+    assert_eq!(empty.len(), BIG_ZERO);
+
+    let empty = RangeMapBlaze::<FiniteF16, u8>::new();
+    assert_eq!(empty.len(), 0);
+    let full = !&empty;
+    assert_eq!(full.len(), i32::from(0xF800u16));
     let empty = !&full;
     assert_eq!(empty.len(), 0);
 }
@@ -154,7 +216,7 @@ fn test_floats() {
 #[test]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn test_inclusive_nightly() {
-    syntactic_for! { ty in [TotalF16] {
+    syntactic_for! { ty in [TotalF16 /* , TotalF128*/] {
         $(
     let a = <$ty>::min_value();
     let b = <$ty>::max_value();
@@ -175,6 +237,14 @@ fn test_floats_nightly() {
     let mut b = tf16(0.0);
     TotalF16::assign_sub_one(&mut b);
     assert_eq!(b, tf16(0.0).prev());
+
+    let mut a = TotalF128::range(0.0..=0.0);
+    assert_eq!(TotalF128::range_next_back(&mut a), Some(tf128(0.0)));
+    assert_eq!(TotalF128::range_next(&mut a), None);
+
+    let mut b = tf128(0.0);
+    TotalF128::assign_sub_one(&mut b);
+    assert_eq!(b, tf128(0.0).prev());
 }
 
 #[test]
@@ -258,6 +328,34 @@ fn total_f16_iterators() {
     assert_eq!(iter.next(), Some(TotalF16::MIN));
     assert_eq!(iter.next(), None);
 }
+#[test]
+
+#[cfg(feature = "total_float_nightly_experimental")]
+fn total_f128_iterators() {
+    // MAX forward
+    let set = RangeSetBlaze::from_iter([TotalF128::MAX..=TotalF128::MAX]);
+    let mut iter = set.iter();
+    assert_eq!(iter.next(), Some(TotalF128::MAX));
+    assert_eq!(iter.next(), None);
+
+    // MAX reverse
+    let set = RangeSetBlaze::from_iter([TotalF128::MAX..=TotalF128::MAX]);
+    let mut iter = set.iter().rev();
+    assert_eq!(iter.next(), Some(TotalF128::MAX));
+    assert_eq!(iter.next(), None);
+
+    // MIN forward
+    let set = RangeSetBlaze::from_iter([TotalF128::MIN..=TotalF128::MIN]);
+    let mut iter = set.iter();
+    assert_eq!(iter.next(), Some(TotalF128::MIN));
+    assert_eq!(iter.next(), None);
+
+    // MIN reverse
+    let set = RangeSetBlaze::from_iter([TotalF128::MIN..=TotalF128::MIN]);
+    let mut iter = set.iter().rev();
+    assert_eq!(iter.next(), Some(TotalF128::MIN));
+    assert_eq!(iter.next(), None);
+}
 
 #[test]
 fn total_f64_complement() {
@@ -332,4 +430,28 @@ fn total_f16_complement() {
     assert!(!set.contains(TotalF16::MIN));
     assert!(set.contains(TotalF16::MIN.next()));
     assert_eq!(set.len(), u16::MAX as <TotalF16 as Integer>::SafeLen);
+}
+
+#[test]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn total_f128_complement() {
+    let max = UIntPlusOne::<u128>::UInt(u128::MAX);
+
+    let set = RangeSetBlaze::from_iter([TotalF128::MAX..=TotalF128::MAX]);
+    assert!(set.contains(TotalF128::MAX));
+    assert!(!set.contains(TotalF128::MAX.prev()));
+    assert_eq!(set.len(), BIG_ONE);
+    let set = !set;
+    assert!(!set.contains(TotalF128::MAX));
+    assert!(set.contains(TotalF128::MAX.prev()));
+    assert_eq!(set.len(), max);
+
+    let set = RangeSetBlaze::from_iter([TotalF128::MIN..=TotalF128::MIN]);
+    assert!(set.contains(TotalF128::MIN));
+    assert!(!set.contains(TotalF128::MIN.next()));
+    assert_eq!(set.len(), BIG_ONE);
+    let set = !set;
+    assert!(!set.contains(TotalF128::MIN));
+    assert!(set.contains(TotalF128::MIN.next()));
+    assert_eq!(set.len(), max);
 }

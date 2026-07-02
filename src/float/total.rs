@@ -20,6 +20,9 @@ pub type TotalF32 = Total<f32>;
 /// Total ordered f16, all values valid, including NaN, -0.0, +0.0, and infinities.
 #[cfg(feature = "total_float_nightly_experimental")]
 pub type TotalF16 = Total<f16>;
+/// Total ordered f128, all values valid, including NaN, -0.0, +0.0, and infinities.
+#[cfg(feature = "total_float_nightly_experimental")]
+pub type TotalF128 = Total<f128>;
 
 /// Construct a [`TotalF64`] from an `f64`.
 #[must_use]
@@ -38,6 +41,13 @@ pub const fn tf32(x: f32) -> TotalF32 {
 #[must_use]
 pub const fn tf16(x: f16) -> TotalF16 {
     Total::<f16>::new(x)
+}
+
+/// Construct a [`TotalF128`] from an `f128`.
+#[cfg(feature = "total_float_nightly_experimental")]
+#[must_use]
+pub const fn tf128(x: f128) -> TotalF128 {
+    Total::<f128>::new(x)
 }
 
 /// Experimental: A transparent wrapper around [`f64`] with total ordering.
@@ -85,13 +95,13 @@ impl<T: Float> Total<T> {
         self.0
     }
 
-    /// Transforms the float bits into the monotonically ordered Signed space used by `total_cmp`.
-    pub fn to_ordered(self) -> T::Signed {
+    /// Transforms the float bits into the monotonically ordered Ordered space used by `total_cmp`.
+    pub fn to_ordered(self) -> T::Ordered {
         T::to_ordered(self.0)
     }
 
-    /// Transforms the ordered Signed space back into standard float bits.
-    pub fn from_ordered(x: T::Signed) -> Self {
+    /// Transforms the ordered Ordered space back into standard float bits.
+    pub fn from_ordered(x: T::Ordered) -> Self {
         Self(T::from_ordered(x))
     }
 
@@ -102,7 +112,7 @@ impl<T: Float> Total<T> {
     pub fn next(self) -> Self {
         debug_assert!(self != Self::MAX, "next() called on maximum value");
         let ordered = self.to_ordered();
-        Self::from_ordered(ordered.wrapping_add(&T::Signed::one()))
+        Self::from_ordered(ordered.wrapping_add(&T::Ordered::one()))
     }
 
     /// Returns the previous float in total order.
@@ -112,7 +122,7 @@ impl<T: Float> Total<T> {
     pub fn prev(self) -> Self {
         debug_assert!(self != Self::MIN, "prev() called on minimum value");
         let ordered = self.to_ordered();
-        Self::from_ordered(ordered.wrapping_sub(&T::Signed::one()))
+        Self::from_ordered(ordered.wrapping_sub(&T::Ordered::one()))
     }
 
     /// Returns the next float in total order.

@@ -7,6 +7,9 @@ use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 use num_traits::{Num, One, Zero};
 use std::fmt::{Debug, Display};
 
+#[cfg(feature = "total_float_nightly_experimental")]
+use crate::UIntPlusOne;
+
 /// Minimum scaffolding necessary to implement Total and Finite for a floating point type.
 pub trait Float: Default + Copy + Clone + Debug + Send + Sync + 'static {
     /// The wrapped type, e.g. f64
@@ -14,7 +17,7 @@ pub trait Float: Default + Copy + Clone + Debug + Send + Sync + 'static {
     /// The result of `to_bits()` on the wrapped type, e.g. u64
     type Bits: Num + Copy + Hash + Send + Sync + Debug;
     /// The intermediate type used for comparison, e.g. i64
-    type Signed: WrappingAdd + WrappingSub + One + PartialEq + Copy + Send + Sync + Debug + Display;
+    type Ordered: WrappingAdd + WrappingSub + One + PartialEq + Copy + Send + Sync + Debug + Display;
     /// Integral type for holding size of any range. Must hold at least one more value than `Bits`.
     type SafeLen: Send
         + Sync
@@ -41,23 +44,23 @@ pub trait Float: Default + Copy + Clone + Debug + Send + Sync + 'static {
     const MAX_FINITE: Self::Primitive;
 
     /// Is this the ordered value of negative zero?
-    /// This should be `const NEG_ZERO: Self::Signed;` but const traits aren't ready yet
-    fn is_neg_zero(x: Self::Signed) -> bool;
+    /// This should be `const NEG_ZERO: Self::Ordered;` but const traits aren't ready yet
+    fn is_neg_zero(x: Self::Ordered) -> bool;
 
-    /// Transform Primitive into Signed, to allow comparison and addition
-    fn to_ordered(x: Self::Primitive) -> Self::Signed;
-    /// Transform Signed back to Primitive, presumably after some addition
-    fn from_ordered(x: Self::Signed) -> Self::Primitive;
+    /// Transform Primitive into Ordered, to allow comparison and addition
+    fn to_ordered(x: Self::Primitive) -> Self::Ordered;
+    /// Transform Ordered back to Primitive, presumably after some addition
+    fn from_ordered(x: Self::Ordered) -> Self::Primitive;
     /// Transform Primitive into a type with more concrete semantics
     fn to_bits(x: Self::Primitive) -> Self::Bits;
     /// Return the size of the inclusive range from start to end
-    fn safe_len(start: Self::Signed, end: Self::Signed) -> Self::SafeLen;
+    fn safe_len(start: Self::Ordered, end: Self::Ordered) -> Self::SafeLen;
     /// Converts [`SafeLen`] to `f64`, potentially losing precision for large values.
     fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64;
     /// Converts a `f64` to [`SafeLen`] using the formula `f as Self::SafeLen`. For large integer types, this will result in a loss of precision.
     fn f64_to_safe_len_lossy(f: f64) -> Self::SafeLen;
-    /// return (x - 1) as `Self::Signed`
-    fn safe_as_signed(x: Self::SafeLen) -> Self::Signed;
+    /// return (x - 1) as `Self::Ordered`
+    fn safe_as_signed(x: Self::SafeLen) -> Self::Ordered;
     /// Returns the ordering between `x` and `y`, as per the standard library's `f64::total_cmp`.
     /// Needed because f16 is not supported in `num_traits`.
     fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering;
@@ -101,7 +104,7 @@ pub trait Float: Default + Copy + Clone + Debug + Send + Sync + 'static {
 impl Float for f64 {
     type Primitive = Self;
     type Bits = u64;
-    type Signed = i64;
+    type Ordered = i64;
     type SafeLen = i128;
 
     const MIN: Self = Self::from_bits(u64::MAX);
@@ -114,20 +117,20 @@ impl Float for f64 {
     }
 
     /// Transforms the float bits into the monotonically ordered `i64` space used by `total_cmp`.
-    fn to_ordered(x: Self::Primitive) -> Self::Signed {
+    fn to_ordered(x: Self::Primitive) -> Self::Ordered {
         let mut bits = x.to_bits().cast_signed();
         bits ^= ((bits >> 63).cast_unsigned() >> 1).cast_signed();
         bits
     }
 
     /// Transforms the ordered `i64` space back into standard float bits.
-    fn from_ordered(mut bits: Self::Signed) -> Self::Primitive {
+    fn from_ordered(mut bits: Self::Ordered) -> Self::Primitive {
         // Reversing the XOR transformation
         bits ^= ((bits >> 63).cast_unsigned() >> 1).cast_signed();
         Self::from_bits(bits.cast_unsigned())
     }
 
-    fn safe_len(start: Self::Signed, end: Self::Signed) -> Self::SafeLen {
+    fn safe_len(start: Self::Ordered, end: Self::Ordered) -> Self::SafeLen {
         // 1️⃣ Contract: caller promises start ≤ end  (checked only in debug builds)
         debug_assert!(start <= end, "start ≤ end required");
 
@@ -147,13 +150,13 @@ impl Float for f64 {
     }
 
     #[expect(clippy::cast_possible_truncation)]
-    fn safe_as_signed(x: Self::SafeLen) -> Self::Signed {
-        (x - 1) as Self::Signed
+    fn safe_as_signed(x: Self::SafeLen) -> Self::Ordered {
+        (x - 1) as Self::Ordered
     }
     fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering {
         x.total_cmp(&y)
     }
-    fn is_neg_zero(x: Self::Signed) -> bool {
+    fn is_neg_zero(x: Self::Ordered) -> bool {
         x == Self::to_ordered(-0.0)
     }
 
@@ -169,7 +172,7 @@ impl Float for f64 {
 impl Float for f32 {
     type Primitive = Self;
     type Bits = u32;
-    type Signed = i32;
+    type Ordered = i32;
     type SafeLen = i64;
 
     const MIN: Self = Self::from_bits(u32::MAX);
@@ -182,20 +185,20 @@ impl Float for f32 {
     }
 
     /// Transforms the float bits into the monotonically ordered `i64` space used by `total_cmp`.
-    fn to_ordered(x: Self::Primitive) -> Self::Signed {
+    fn to_ordered(x: Self::Primitive) -> Self::Ordered {
         let mut bits = x.to_bits().cast_signed();
         bits ^= ((bits >> 31).cast_unsigned() >> 1).cast_signed();
         bits
     }
 
     /// Transforms the ordered `i64` space back into standard float bits.
-    fn from_ordered(mut bits: Self::Signed) -> Self::Primitive {
+    fn from_ordered(mut bits: Self::Ordered) -> Self::Primitive {
         // Reversing the XOR transformation
         bits ^= ((bits >> 31).cast_unsigned() >> 1).cast_signed();
         Self::from_bits(bits.cast_unsigned())
     }
 
-    fn safe_len(start: Self::Signed, end: Self::Signed) -> Self::SafeLen {
+    fn safe_len(start: Self::Ordered, end: Self::Ordered) -> Self::SafeLen {
         // 1️⃣ Contract: caller promises start ≤ end  (checked only in debug builds)
         debug_assert!(start <= end, "start ≤ end required");
 
@@ -214,13 +217,13 @@ impl Float for f32 {
     }
 
     #[expect(clippy::cast_possible_truncation)]
-    fn safe_as_signed(x: Self::SafeLen) -> Self::Signed {
-        (x - 1) as Self::Signed
+    fn safe_as_signed(x: Self::SafeLen) -> Self::Ordered {
+        (x - 1) as Self::Ordered
     }
     fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering {
         x.total_cmp(&y)
     }
-    fn is_neg_zero(x: Self::Signed) -> bool {
+    fn is_neg_zero(x: Self::Ordered) -> bool {
         x == Self::to_ordered(-0.0f32)
     }
     fn is_finite(x: Self::Primitive) -> bool {
@@ -236,7 +239,7 @@ impl Float for f32 {
 impl Float for f16 {
     type Primitive = Self;
     type Bits = u16;
-    type Signed = i16;
+    type Ordered = i16;
     type SafeLen = i32;
 
     const MIN: Self = Self::from_bits(u16::MAX);
@@ -249,20 +252,20 @@ impl Float for f16 {
     }
 
     /// Transforms the float bits into the monotonically ordered `i64` space used by `total_cmp`.
-    fn to_ordered(x: Self::Primitive) -> Self::Signed {
+    fn to_ordered(x: Self::Primitive) -> Self::Ordered {
         let mut bits = x.to_bits().cast_signed();
         bits ^= ((bits >> 15).cast_unsigned() >> 1).cast_signed();
         bits
     }
 
     /// Transforms the ordered `i64` space back into standard float bits.
-    fn from_ordered(mut bits: Self::Signed) -> Self::Primitive {
+    fn from_ordered(mut bits: Self::Ordered) -> Self::Primitive {
         // Reversing the XOR transformation
         bits ^= ((bits >> 15).cast_unsigned() >> 1).cast_signed();
         Self::from_bits(bits.cast_unsigned())
     }
 
-    fn safe_len(start: Self::Signed, end: Self::Signed) -> Self::SafeLen {
+    fn safe_len(start: Self::Ordered, end: Self::Ordered) -> Self::SafeLen {
         // 1️⃣ Contract: caller promises start ≤ end  (checked only in debug builds)
         debug_assert!(start <= end, "start ≤ end required");
 
@@ -281,13 +284,13 @@ impl Float for f16 {
     }
 
     #[expect(clippy::cast_possible_truncation)]
-    fn safe_as_signed(x: Self::SafeLen) -> Self::Signed {
-        (x - 1) as Self::Signed
+    fn safe_as_signed(x: Self::SafeLen) -> Self::Ordered {
+        (x - 1) as Self::Ordered
     }
     fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering {
         x.total_cmp(&y)
     }
-    fn is_neg_zero(x: Self::Signed) -> bool {
+    fn is_neg_zero(x: Self::Ordered) -> bool {
         x == Self::to_ordered(-0.0f16)
     }
     fn is_finite(x: Self::Primitive) -> bool {
@@ -295,6 +298,87 @@ impl Float for f16 {
     }
     fn normalize(x: Self::Primitive) -> Self::Primitive {
         const NEG_ZERO: u16 = f16::to_bits(-0.0);
+        if x.to_bits() == NEG_ZERO { 0.0 } else { x }
+    }
+}
+
+#[cfg(feature = "total_float_nightly_experimental")]
+impl Float for f128 {
+    type Primitive = Self;
+    type Bits = u128;
+    type Ordered = i128;
+    type SafeLen = UIntPlusOne<u128>;
+
+    const MIN: Self = Self::from_bits(u128::MAX);
+    const MAX: Self = Self::from_bits(0x7fff_ffff_ffff_ffff_ffff_ffff_ffff_ffff);
+    const MIN_FINITE: Self = Self::MIN;
+    const MAX_FINITE: Self = Self::MAX;
+
+    fn to_bits(x: Self::Primitive) -> Self::Bits {
+        x.to_bits()
+    }
+
+    /// Transforms the float bits into the monotonically ordered `i64` space used by `total_cmp`.
+    fn to_ordered(x: Self::Primitive) -> Self::Ordered {
+        let mut bits = x.to_bits().cast_signed();
+        bits ^= ((bits >> 127).cast_unsigned() >> 1).cast_signed();
+        bits
+    }
+
+    /// Transforms the ordered `i64` space back into standard float bits.
+    fn from_ordered(mut bits: Self::Ordered) -> Self::Primitive {
+        // Reversing the XOR transformation
+        bits ^= ((bits >> 127).cast_unsigned() >> 1).cast_signed();
+        Self::from_bits(bits.cast_unsigned())
+    }
+
+    #[expect(clippy::cast_sign_loss)]
+    fn safe_len(start: Self::Ordered, end: Self::Ordered) -> Self::SafeLen {
+        // 1️⃣ Contract: caller promises start ≤ end  (checked only in debug builds)
+        debug_assert!(start <= end, "start ≤ end required");
+
+        // 2️⃣ Compute distance in `Self` then reinterpret‑cast to the first
+        let less1 = end.overflowing_sub(start).0 as u128;
+        let less1 = UIntPlusOne::UInt(less1);
+        less1 + UIntPlusOne::UInt(1)
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64 {
+        match len {
+            UIntPlusOne::UInt(len) => len as f64,
+            UIntPlusOne::MaxPlusOne => UIntPlusOne::<u128>::max_plus_one_as_f64(),
+        }
+    }
+
+    #[expect(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_sign_loss)]
+    fn f64_to_safe_len_lossy(f: f64) -> Self::SafeLen {
+        if f >= UIntPlusOne::<u128>::max_plus_one_as_f64() {
+            UIntPlusOne::MaxPlusOne
+        } else {
+            UIntPlusOne::UInt(f as u128)
+        }
+    }
+
+    #[expect(clippy::cast_possible_wrap)]
+    fn safe_as_signed(x: Self::SafeLen) -> Self::Ordered {
+        match x {
+            UIntPlusOne::UInt(x) => (x - 1) as Self::Ordered,
+            UIntPlusOne::MaxPlusOne => i128::MAX,
+        }
+    }
+    fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering {
+        x.total_cmp(&y)
+    }
+    fn is_neg_zero(x: Self::Ordered) -> bool {
+        x == Self::to_ordered(-0.0f128)
+    }
+    fn is_finite(x: Self::Primitive) -> bool {
+        x.is_finite()
+    }
+    fn normalize(x: Self::Primitive) -> Self::Primitive {
+        const NEG_ZERO: u128 = f128::to_bits(-0.0);
         if x.to_bits() == NEG_ZERO { 0.0 } else { x }
     }
 }

@@ -26,6 +26,9 @@ pub type FiniteF32 = Finite<f32>;
 /// Total ordered f16, excluding NaN, -0.0, +0.0, and infinities.
 #[cfg(feature = "total_float_nightly_experimental")]
 pub type FiniteF16 = Finite<f16>;
+/// Total ordered f128, excluding NaN, -0.0, +0.0, and infinities.
+#[cfg(feature = "total_float_nightly_experimental")]
+pub type FiniteF128 = Finite<f128>;
 
 /// Construct a [`FiniteF64`] from an `f64`.
 #[must_use]
@@ -44,6 +47,13 @@ pub fn ff32(x: f32) -> FiniteF32 {
 #[must_use]
 pub fn ff16(x: f16) -> FiniteF16 {
     Finite::<f16>::new(x)
+}
+
+/// Construct a [`FiniteF128`] from an `f128`.
+#[cfg(feature = "total_float_nightly_experimental")]
+#[must_use]
+pub fn ff128(x: f128) -> FiniteF128 {
+    Finite::<f128>::new(x)
 }
 
 /// Experimental: A transparent wrapper around [`f64`] with total ordering.
@@ -105,13 +115,13 @@ impl<T: Float> Finite<T> {
         self.0
     }
 
-    /// Transforms the float bits into the monotonically ordered Signed space used by `total_cmp`.
-    pub fn to_ordered(self) -> T::Signed {
+    /// Transforms the float bits into the monotonically ordered Ordered space used by `total_cmp`.
+    pub fn to_ordered(self) -> T::Ordered {
         T::to_ordered(self.0)
     }
 
-    /// Transforms the ordered Signed space back into standard float bits.
-    pub fn from_ordered(x: T::Signed) -> Self {
+    /// Transforms the ordered Ordered space back into standard float bits.
+    pub fn from_ordered(x: T::Ordered) -> Self {
         Self(T::from_ordered(x))
     }
 
@@ -122,9 +132,9 @@ impl<T: Float> Finite<T> {
     pub fn next(self) -> Self {
         debug_assert!(self != Self::MAX, "next() called on maximum value");
         let mut ordered = self.to_ordered();
-        ordered = ordered.wrapping_add(&T::Signed::one());
+        ordered = ordered.wrapping_add(&T::Ordered::one());
         if T::is_neg_zero(ordered) {
-            ordered = ordered.wrapping_add(&T::Signed::one());
+            ordered = ordered.wrapping_add(&T::Ordered::one());
         }
         Self::from_ordered(ordered)
     }
@@ -136,9 +146,9 @@ impl<T: Float> Finite<T> {
     pub fn prev(self) -> Self {
         debug_assert!(self != Self::MIN, "prev() called on minimum value");
         let mut ordered = self.to_ordered();
-        ordered = ordered.wrapping_sub(&T::Signed::one());
+        ordered = ordered.wrapping_sub(&T::Ordered::one());
         if T::is_neg_zero(ordered) {
-            ordered = ordered.wrapping_sub(&T::Signed::one());
+            ordered = ordered.wrapping_sub(&T::Ordered::one());
         }
         Self::from_ordered(ordered)
     }

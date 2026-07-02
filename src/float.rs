@@ -6,11 +6,11 @@
 pub mod float;
 
 pub mod total;
-#[cfg(feature = "total_float_nightly_experimental")]
-pub use total::TotalF16;
 pub use total::{Total, TotalF32, TotalF64};
+#[cfg(feature = "total_float_nightly_experimental")]
+pub use total::{TotalF16, TotalF128};
 
 pub mod finite;
-#[cfg(feature = "total_float_nightly_experimental")]
-pub use finite::FiniteF16;
 pub use finite::{Finite, FiniteF32, FiniteF64};
+#[cfg(feature = "total_float_nightly_experimental")]
+pub use finite::{FiniteF16, FiniteF128};
