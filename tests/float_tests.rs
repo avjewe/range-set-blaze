@@ -4,12 +4,12 @@
 #![cfg(feature = "total_float_experimental")]
 
 use num_traits::identities::One;
-use range_set_blaze::{Integer, RangeMapBlaze, RangeSetBlaze, TotalF32, TotalF64};
+#[cfg(feature = "total_float_nightly_experimental")]
+use range_set_blaze::TotalF16;
+#[cfg(feature = "total_float_nightly_experimental")]
+use range_set_blaze::total::tf16;
 use range_set_blaze::total::{tf32, tf64};
-#[cfg(feature = "total_float_nightly_experimental")]
-use range_set_blaze::{TotalF16};
-#[cfg(feature = "total_float_nightly_experimental")]
-use range_set_blaze::total::{tf16};
+use range_set_blaze::{Integer, RangeMapBlaze, RangeSetBlaze, TotalF32, TotalF64};
 use syntactic_for::syntactic_for;
 
 #[test]

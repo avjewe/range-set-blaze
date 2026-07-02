@@ -4,9 +4,8 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::ops::RangeInclusive;
 
-use crate::float::total::Float;
+use super::float::Float;
 use num_traits::One;
-use num_traits::ops::checked::{CheckedAdd, CheckedSub};
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 use std::fmt::Debug;
 
@@ -14,6 +13,7 @@ use std::fmt::Debug;
 use crate::RangeSetBlaze;
 
 /// Error type, only used for [`TryFrom`] implementations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     /// The float is not finite (NaN or infinity).
     FloatIsNotFinite,
@@ -58,7 +58,7 @@ pub fn ff16(x: f16) -> FiniteF16 {
 /// ```
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
-pub struct Finite<T: Float>(pub T::Primitive);
+pub struct Finite<T: Float>(T::Primitive);
 
 impl<T: Float> Finite<T> {
     /// The minimum value in [`f64::total_cmp`] order.
@@ -73,8 +73,18 @@ impl<T: Float> Finite<T> {
     /// Panics if start (inclusive) is greater than end (inclusive).
     #[must_use]
     pub fn new(x: T::Primitive) -> Self {
-        assert!(T::is_finite(x), "Finite type requires a finite value");
-        Self(T::normalize(x))
+        Self::try_new(x).expect("Finite type requires a finite value")
+    }
+
+    /// Creates a new [`Finite`] from a primitive float.
+    /// # Errors
+    /// Returns `Error::FloatIsNotFinite` if the float is not finite (NaN or infinity).
+    pub fn try_new(x: T::Primitive) -> Result<Self, Error> {
+        if T::is_finite(x) {
+            Ok(Self(T::normalize(x)))
+        } else {
+            Err(Error::FloatIsNotFinite)
+        }
     }
 
     /// Computes `self + (b - 1)` where `b` is of type [`SafeLen`].
@@ -110,8 +120,13 @@ impl<T: Float> Finite<T> {
     /// Panics on overflow if `self` is the maximum value in total order.
     #[must_use]
     pub fn next(self) -> Self {
-        let ordered = self.to_ordered();
-        Self::from_ordered(ordered.wrapping_add(&T::Signed::one()))
+        debug_assert!(self != Self::MAX, "next() called on maximum value");
+        let mut ordered = self.to_ordered();
+        ordered = ordered.wrapping_add(&T::Signed::one());
+        if T::is_neg_zero(ordered) {
+            ordered = ordered.wrapping_add(&T::Signed::one());
+        }
+        Self::from_ordered(ordered)
     }
 
     /// Returns the previous float in total order.
@@ -119,8 +134,13 @@ impl<T: Float> Finite<T> {
     /// Panics on overflow if `self` is the minimum value in total order.
     #[must_use]
     pub fn prev(self) -> Self {
-        let ordered = self.to_ordered();
-        Self::from_ordered(ordered.wrapping_sub(&T::Signed::one()))
+        debug_assert!(self != Self::MIN, "prev() called on minimum value");
+        let mut ordered = self.to_ordered();
+        ordered = ordered.wrapping_sub(&T::Signed::one());
+        if T::is_neg_zero(ordered) {
+            ordered = ordered.wrapping_sub(&T::Signed::one());
+        }
+        Self::from_ordered(ordered)
     }
 
     /// Returns the next float in total order.
@@ -128,10 +148,11 @@ impl<T: Float> Finite<T> {
     /// Returns [`None`] if `self` is the maximum value in total order.
     #[must_use]
     pub fn checked_next(self) -> Option<Self> {
-        // let ordered = self.to_ordered();
-        self.to_ordered()
-            .checked_add(&T::Signed::one())
-            .map(Self::from_ordered)
+        if self == Self::MAX {
+            None
+        } else {
+            Some(self.next())
+        }
     }
 
     /// Returns the previous float in total order.
@@ -139,9 +160,11 @@ impl<T: Float> Finite<T> {
     /// Returns [`None`] if `self` is the minimum value in total order.
     #[must_use]
     pub fn checked_prev(self) -> Option<Self> {
-        self.to_ordered()
-            .checked_sub(&T::Signed::one())
-            .map(Self::from_ordered)
+        if self == Self::MIN {
+            None
+        } else {
+            Some(self.prev())
+        }
     }
 
     /// Converts an inclusive primitive range into an inclusive [`Finite`] range.
@@ -213,18 +236,6 @@ impl<T: Float> Hash for Finite<T> {
         T::to_bits(self.0).hash(state);
     }
 }
-
-// impl<T: Float> TryFrom<T::Primitive> for Finite<T> {
-//     type Error = Error;
-
-//     fn try_from(value: T::Primitive) -> Result<Self, Error> {
-//         if T::is_finite(value) {
-//             Ok(Self::new(T::normalize(value)))
-//         } else {
-//             Err(Error::FloatIsNotFinite)
-//         }
-//     }
-// }
 
 ///```
 /// use range_set_blaze::{RangeSetBlaze, FiniteF64};
