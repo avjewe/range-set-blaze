@@ -3,7 +3,6 @@
 use core::cmp::Ordering;
 use core::hash::Hash;
 
-use num_traits::ops::checked::{CheckedAdd, CheckedSub};
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 use num_traits::{Num, One, Zero};
 use std::fmt::{Debug, Display};
@@ -15,17 +14,7 @@ pub trait Float: Default + Copy + Clone + Debug + Send + Sync + 'static {
     /// The result of `to_bits()` on the wrapped type, e.g. u64
     type Bits: Num + Copy + Hash + Send + Sync + Debug;
     /// The intermediate type used for comparison, e.g. i64
-    type Signed: CheckedAdd
-        + CheckedSub
-        + WrappingAdd
-        + WrappingSub
-        + One
-        + PartialEq
-        + Copy
-        + Send
-        + Sync
-        + Debug
-        + Display;
+    type Signed: WrappingAdd + WrappingSub + One + PartialEq + Copy + Send + Sync + Debug + Display;
     /// Integral type for holding size of any range. Must hold at least one more value than `Bits`.
     type SafeLen: Send
         + Sync

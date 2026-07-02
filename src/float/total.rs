@@ -4,7 +4,6 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::ops::RangeInclusive;
 
-use num_traits::ops::checked::{CheckedAdd, CheckedSub};
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 use num_traits::{One};
 use std::fmt::{Debug};
@@ -101,6 +100,7 @@ impl<T: Float> Total<T> {
     /// Panics on overflow if `self` is the maximum value in total order.
     #[must_use]
     pub fn next(self) -> Self {
+        debug_assert!(self != Self::MAX, "next() called on maximum value");
         let ordered = self.to_ordered();
         Self::from_ordered(ordered.wrapping_add(&T::Signed::one()))
     }
@@ -110,6 +110,7 @@ impl<T: Float> Total<T> {
     /// Panics on overflow if `self` is the minimum value in total order.
     #[must_use]
     pub fn prev(self) -> Self {
+        debug_assert!(self != Self::MIN, "prev() called on minimum value");
         let ordered = self.to_ordered();
         Self::from_ordered(ordered.wrapping_sub(&T::Signed::one()))
     }
@@ -119,10 +120,11 @@ impl<T: Float> Total<T> {
     /// Returns [`None`] if `self` is the maximum value in total order.
     #[must_use]
     pub fn checked_next(self) -> Option<Self> {
-        // let ordered = self.to_ordered();
-        self.to_ordered()
-            .checked_add(&T::Signed::one())
-            .map(Self::from_ordered)
+        if self == Self::MAX {
+            None
+        } else {
+            Some(self.next())
+        }
     }
 
     /// Returns the previous float in total order.
@@ -130,9 +132,11 @@ impl<T: Float> Total<T> {
     /// Returns [`None`] if `self` is the minimum value in total order.
     #[must_use]
     pub fn checked_prev(self) -> Option<Self> {
-        self.to_ordered()
-            .checked_sub(&T::Signed::one())
-            .map(Self::from_ordered)
+        if self == Self::MIN {
+            None
+        } else {
+            Some(self.prev())
+        }
     }
 
     /// Converts an inclusive primitive range into an inclusive [`Total`] range.
