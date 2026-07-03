@@ -160,7 +160,11 @@ macro_rules! impl_finite_ops {
         }
 
         fn normalize(x: Self::Primitive) -> Self::Primitive {
-            if x.to_bits() == Self::NEG_ZERO_BITS { 0.0 } else { x }
+            if x.to_bits() == Self::NEG_ZERO_BITS {
+                0.0
+            } else {
+                x
+            }
         }
     };
 }

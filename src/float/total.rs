@@ -4,9 +4,9 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::ops::RangeInclusive;
 
+use num_traits::One;
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
-use num_traits::{One};
-use std::fmt::{Debug};
+use std::fmt::Debug;
 
 #[cfg(feature = "from_slice")]
 use crate::RangeSetBlaze;

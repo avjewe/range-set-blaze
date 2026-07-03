@@ -5,22 +5,24 @@
 
 use num_traits::identities::One;
 #[cfg(feature = "total_float_nightly_experimental")]
-use range_set_blaze::{TotalF16, TotalF128, FiniteF16, FiniteF128};
-#[cfg(feature = "total_float_nightly_experimental")]
 use range_set_blaze::UIntPlusOne;
 #[cfg(feature = "total_float_nightly_experimental")]
-use range_set_blaze::total::{tf16, tf128};
-#[cfg(feature = "total_float_nightly_experimental")]
 use range_set_blaze::finite::{ff16, ff128};
-use range_set_blaze::total::{tf32, tf64};
 use range_set_blaze::finite::{ff32, ff64};
-use range_set_blaze::{Integer, RangeMapBlaze, RangeSetBlaze, TotalF32, TotalF64, FiniteF32, FiniteF64};
+#[cfg(feature = "total_float_nightly_experimental")]
+use range_set_blaze::total::{tf16, tf128};
+use range_set_blaze::total::{tf32, tf64};
+#[cfg(feature = "total_float_nightly_experimental")]
+use range_set_blaze::{FiniteF16, FiniteF128, TotalF16, TotalF128};
+use range_set_blaze::{
+    FiniteF32, FiniteF64, Integer, RangeMapBlaze, RangeSetBlaze, TotalF32, TotalF64,
+};
 use syntactic_for::syntactic_for;
 
 #[cfg(feature = "total_float_nightly_experimental")]
-const BIG_ZERO : UIntPlusOne::<u128> = UIntPlusOne::<u128>::UInt(0);
+const BIG_ZERO: UIntPlusOne<u128> = UIntPlusOne::<u128>::UInt(0);
 #[cfg(feature = "total_float_nightly_experimental")]
-const BIG_ONE : UIntPlusOne::<u128> = UIntPlusOne::<u128>::UInt(1);
+const BIG_ONE: UIntPlusOne<u128> = UIntPlusOne::<u128>::UInt(1);
 
 #[test]
 fn map_complement0() {
@@ -71,7 +73,7 @@ fn map_complement0_nightly() {
     let empty = RangeMapBlaze::<TotalF128, u8>::new();
     assert_eq!(empty.len(), BIG_ZERO);
     let full = !&empty;
-    assert_eq!(full.len(),  UIntPlusOne::<u128>::MaxPlusOne);
+    assert_eq!(full.len(), UIntPlusOne::<u128>::MaxPlusOne);
     let empty = !&full;
     assert_eq!(empty.len(), BIG_ZERO);
 
@@ -331,7 +333,6 @@ fn total_f16_iterators() {
     assert_eq!(iter.next(), None);
 }
 #[test]
-
 #[cfg(feature = "total_float_nightly_experimental")]
 fn total_f128_iterators() {
     // MAX forward

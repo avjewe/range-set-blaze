@@ -63,7 +63,10 @@ pub trait Integer: Copy + PartialEq + PartialOrd + Ord + fmt::Debug + Send + Syn
     /// ```
     #[must_use]
     fn exhausted_range() -> RangeInclusive<Self> {
-                debug_assert!(Self::min_value() < Self::max_value(), "Precondition violated: min_value must be less than max_value");
+        debug_assert!(
+            Self::min_value() < Self::max_value(),
+            "Precondition violated: min_value must be less than max_value"
+        );
         Self::max_value()..=Self::min_value()
     }
 
@@ -1235,9 +1238,7 @@ mod tests {
             assert_eq!(len, len2);
             assert_eq!(
                 len2,
-                char::f64_to_safe_len_lossy(char::safe_len_to_f64_lossy(
-                    len2
-                ))
+                char::f64_to_safe_len_lossy(char::safe_len_to_f64_lossy(len2))
             );
 
             let item2 = char::min_value().inclusive_end_from_start(len);
