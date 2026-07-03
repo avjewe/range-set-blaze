@@ -114,18 +114,81 @@ fn set_complement0() {
     assert_eq!(full.len(), i64::from(u32::MAX) + 1);
     let empty = !&full;
     assert_eq!(empty.len(), 0);
+
+    let empty = RangeSetBlaze::<FiniteF64>::new();
+    assert_eq!(empty.len(), 0);
+    let full = !&empty;
+    assert_eq!(full.len(), FiniteF64::MAX_SIZE);
+    let empty = !&full;
+    assert_eq!(empty.len(), 0);
+
+    let empty = RangeSetBlaze::<FiniteF32>::new();
+    assert_eq!(empty.len(), 0);
+    let full = !&empty;
+    assert_eq!(full.len(), FiniteF32::MAX_SIZE);
+    let empty = !&full;
+    assert_eq!(empty.len(), 0);
+}
+
+#[test]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn set_complement_nightly() {
+    let empty = RangeSetBlaze::<TotalF128>::new();
+    assert_eq!(empty.len(), BIG_ZERO);
+    let full = !&empty;
+    assert_eq!(full.len(), UIntPlusOne::<u128>::MaxPlusOne);
+    let empty = !&full;
+    assert_eq!(empty.len(), BIG_ZERO);
+
+    let empty = RangeSetBlaze::<TotalF16>::new();
+    assert_eq!(empty.len(), 0);
+    let full = !&empty;
+    assert_eq!(full.len(), i32::from(u16::MAX) + 1);
+    let empty = !&full;
+    assert_eq!(empty.len(), 0);
+
+    let empty = RangeSetBlaze::<FiniteF128>::new();
+    assert_eq!(empty.len(), 0);
+    let full = !&empty;
+    assert_eq!(full.len(), FiniteF128::MAX_SIZE);
+    let empty = !&full;
+    assert_eq!(empty.len(), 0);
+
+    let empty = RangeSetBlaze::<FiniteF16>::new();
+    assert_eq!(empty.len(), 0);
+    let full = !&empty;
+    assert_eq!(full.len(), FiniteF16::MAX_SIZE);
+    let empty = !&full;
+    assert_eq!(empty.len(), 0);
 }
 
 #[test]
 #[allow(clippy::cognitive_complexity, clippy::float_cmp)]
 fn integer_coverage() {
-    syntactic_for! { ty in [TotalF32, TotalF64] {
+    syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
         $(
             let len = <$ty as Integer>::SafeLen::one();
-            // let a = $ty::zero();
+            let a = $ty::new(42.0);
             assert_eq!($ty::safe_len_to_f64_lossy(len), 1.0);
-            // assert_eq!($ty::inclusive_end_from_start(a,len), a);
-            // assert_eq!($ty::start_from_inclusive_end(a,len), a);
+            assert_eq!($ty::inclusive_end_from_start(a,len), a);
+            assert_eq!($ty::start_from_inclusive_end(a,len), a);
+            assert_eq!($ty::f64_to_safe_len_lossy(1.0), len);
+
+        )*
+    }};
+}
+
+#[test]
+#[cfg(feature = "total_float_nightly_experimental")]
+#[allow(clippy::cognitive_complexity, clippy::float_cmp)]
+fn integer_coverage_nightly() {
+    syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
+        $(
+            let len = <$ty as Integer>::SafeLen::one();
+            let a = $ty::new(42.0);
+            assert_eq!($ty::safe_len_to_f64_lossy(len), 1.0);
+            assert_eq!($ty::inclusive_end_from_start(a,len), a);
+            assert_eq!($ty::start_from_inclusive_end(a,len), a);
             assert_eq!($ty::f64_to_safe_len_lossy(1.0), len);
 
         )*
@@ -187,13 +250,42 @@ fn float_test() {
 
 #[test]
 fn test_inclusive() {
-    syntactic_for! { ty in [TotalF32, TotalF64] {
+    syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
         $(
     let a = <$ty>::min_value();
     let b = <$ty>::max_value();
     let len = <$ty>::safe_len(&(a..=b));
     assert_eq!(<$ty>::inclusive_end_from_start(a, len), b);
     assert_eq!(<$ty>::start_from_inclusive_end(b, len), a);
+        )*
+    }}
+}
+
+#[test]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn test_inclusive_nightly() {
+    syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
+        $(
+            let a = <$ty>::min_value();
+            let b = <$ty>::max_value();
+            let len = <$ty>::safe_len(&(a..=b));
+            assert_eq!(<$ty>::inclusive_end_from_start(a, len), b);
+            assert_eq!(<$ty>::start_from_inclusive_end(b, len), a);
+        )*
+    }}
+}
+
+#[test]
+fn test_floats2() {
+    syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
+        $(
+            let mut a = $ty::range(0.0..=0.0);
+            assert_eq!($ty::range_next_back(&mut a), Some($ty::new(0.0)));
+            assert_eq!($ty::range_next(&mut a), None);
+
+            let mut b = $ty::new(0.0);
+            $ty::assign_sub_one(&mut b);
+            assert_eq!(b, $ty::new(0.0).prev());
         )*
     }}
 }
@@ -215,20 +307,6 @@ fn test_floats() {
     let mut b = tf32(0.0);
     TotalF32::assign_sub_one(&mut b);
     assert_eq!(b, tf32(0.0).prev());
-}
-
-#[test]
-#[cfg(feature = "total_float_nightly_experimental")]
-fn test_inclusive_nightly() {
-    syntactic_for! { ty in [TotalF16 /* , TotalF128*/] {
-        $(
-    let a = <$ty>::min_value();
-    let b = <$ty>::max_value();
-    let len = <$ty>::safe_len(&(a..=b));
-    assert_eq!(<$ty>::inclusive_end_from_start(a, len), b);
-    assert_eq!(<$ty>::start_from_inclusive_end(b, len), a);
-        )*
-    }}
 }
 
 #[test]

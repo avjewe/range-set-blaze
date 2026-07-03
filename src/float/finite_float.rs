@@ -17,7 +17,16 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
     /// The result of `to_bits()` on the wrapped type, e.g. u64
     type Bits: Num + Copy + Hash + Send + Sync + Debug;
     /// The intermediate type used for comparison, e.g. i64
-    type Ordered: WrappingAdd + WrappingSub + One + PartialEq + Copy + Send + Sync + Debug + Display;
+    type Ordered: WrappingAdd
+        + WrappingSub
+        + One
+        + PartialEq
+        + Copy
+        + Send
+        + Sync
+        + Debug
+        + Display
+        + PartialOrd;
     /// Integral type for holding size of any range. Must hold at least one more value than `Bits`.
     type SafeLen: Send
         + Sync
@@ -81,7 +90,12 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
             );
         }
         // If b is in range, two’s-complement wrap-around yields the correct inclusive end even if the add overflows
-        Self::from_ordered(Self::to_ordered(a).wrapping_add(&Self::safe_as_ordered(b)))
+        let start = Self::to_ordered(a);
+        let mut end = start.wrapping_add(&Self::safe_as_ordered(b));
+        if (start..=end).contains(&Self::NEG_ZERO_ORDERED) {
+            end = end.wrapping_add(&Self::Ordered::one());
+        }
+        Self::from_ordered(end)
     }
     /// Computes `self - (b - 1)` where `b` is of type [`Integer::SafeLen`].
     fn start_from_inclusive_end(a: Self::Primitive, b: Self::SafeLen) -> Self::Primitive {
@@ -94,7 +108,12 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
             );
         }
         // If b is in range, two’s-complement wrap-around yields the correct start even if the sub overflows
-        Self::from_ordered(Self::to_ordered(a).wrapping_sub(&Self::safe_as_ordered(b)))
+        let end = Self::to_ordered(a);
+        let mut start = end.wrapping_sub(&Self::safe_as_ordered(b));
+        if (start..=end).contains(&Self::NEG_ZERO_ORDERED) {
+            start = start.wrapping_sub(&Self::Ordered::one());
+        }
+        Self::from_ordered(start)
     }
     /// Return the size of the inclusive range from start to end.
     fn prim_safe_len(start: Self::Primitive, end: Self::Primitive) -> Self::SafeLen {
@@ -129,8 +148,11 @@ macro_rules! impl_finite_ops {
             debug_assert!(start >= Self::MIN_ORDERED, "start >= MIN required");
             debug_assert!(end <= Self::MAX_ORDERED, "end <= MAX required");
 
-            // 2️⃣ Compute distance in `Self` then reinterpret‑cast to the first
-            end.wrapping_sub(start).wrapping_add(1) as Self::SafeLen
+            if (start..=end).contains(&Self::NEG_ZERO_ORDERED) {
+                end.wrapping_sub(start) as Self::SafeLen
+            } else {
+                end.wrapping_sub(start).wrapping_add(1) as Self::SafeLen
+            }
         }
 
         #[allow(clippy::cast_precision_loss)]
@@ -175,7 +197,7 @@ impl FiniteFloat for f64 {
     type Ordered = i64;
     type SafeLen = u64;
 
-    const MAX_SIZE: Self::SafeLen = 0xFFE0_0000_0000_0000_u64;
+    const MAX_SIZE: Self::SafeLen = 0xFFE0_0000_0000_0000_u64 - 1;
 
     fn from_ordered(bits: Self::Ordered) -> Self::Primitive {
         from_ordered_64(bits)
@@ -190,7 +212,7 @@ impl FiniteFloat for f32 {
     type Ordered = i32;
     type SafeLen = u32;
 
-    const MAX_SIZE: Self::SafeLen = 0xFF00_0000_u32;
+    const MAX_SIZE: Self::SafeLen = 0xFF00_0000_u32 - 1;
 
     impl_finite_ops!(to_ordered_32);
 
@@ -206,7 +228,7 @@ impl FiniteFloat for f16 {
     type Ordered = i16;
     type SafeLen = u16;
 
-    const MAX_SIZE: Self::SafeLen = 0xF800u16;
+    const MAX_SIZE: Self::SafeLen = 0xF800u16 - 1;
 
     impl_finite_ops!(to_ordered_16);
 
@@ -222,7 +244,7 @@ impl FiniteFloat for f128 {
     type Ordered = i128;
     type SafeLen = u128;
 
-    const MAX_SIZE: Self::SafeLen = 0xFFFE_0000_0000_0000_0000_0000_0000_0000_u128;
+    const MAX_SIZE: Self::SafeLen = 0xFFFE_0000_0000_0000_0000_0000_0000_0000_u128 - 1;
 
     impl_finite_ops!(to_ordered_128);
 

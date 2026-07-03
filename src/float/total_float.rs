@@ -283,7 +283,7 @@ impl TotalFloat for f128 {
     fn safe_as_ordered(x: Self::SafeLen) -> Self::Ordered {
         match x {
             UIntPlusOne::UInt(x) => (x - 1) as Self::Ordered,
-            UIntPlusOne::MaxPlusOne => i128::MAX,
+            UIntPlusOne::MaxPlusOne => u128::MAX as Self::Ordered,
         }
     }
 }
