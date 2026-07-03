@@ -363,64 +363,38 @@ impl<T: FiniteFloat> crate::Integer for Finite<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::hash_map::DefaultHasher;
     use std::vec;
     use std::vec::Vec;
 
     #[test]
     fn ordering_agrees_with_total_cmp() {
-        let values = [
-            f64::NEG_INFINITY,
-            -f64::MAX,
-            -1.0,
-            -0.0,
-            0.0,
-            1.0,
-            f64::MAX,
-            f64::INFINITY,
-            f64::NAN,
-            f64::from_bits(0x7ff8_0000_0000_0001),
-            f64::from_bits(0xfff8_0000_0000_0001),
-        ];
+        let values = [-f64::MAX, -1.0, 0.0, 1.0, f64::MAX];
 
         for left in values {
             for right in values {
-                assert_eq!(tf64(left).cmp(&tf64(right)), left.total_cmp(&right));
+                assert_eq!(ff64(left).cmp(&ff64(right)), left.total_cmp(&right));
             }
         }
-    }
-
-    #[test]
-    fn equality_agrees_with_total_cmp() {
-        assert_ne!(tf64(-0.0), tf64(0.0));
-        assert_eq!(tf64(f64::NAN), tf64(f64::NAN));
-    }
-
-    #[test]
-    fn equal_values_hash_equally() {
-        let left = hash(tf64(f64::NAN));
-        let right = hash(tf64(f64::NAN));
-
-        assert_eq!(left, right);
+        assert_ne!(ff64(0.0).cmp(&ff64(-0.0)), 0.0_f64.total_cmp(&-0.0));
     }
 
     #[test]
     fn converts_ranges() {
-        assert_eq!(FiniteF64::range(10.0..=20.0), tf64(10.0)..=tf64(20.0));
+        assert_eq!(FiniteF64::range(10.0..=20.0), ff64(10.0)..=ff64(20.0));
         assert_eq!(
             FiniteF64::ranges([10.0..=20.0, 30.0..=40.0]).collect::<Vec<_>>(),
-            vec![tf64(10.0)..=tf64(20.0), tf64(30.0)..=tf64(40.0)]
+            vec![ff64(10.0)..=ff64(20.0), ff64(30.0)..=ff64(40.0)]
         );
     }
 
     #[test]
     fn next_and_prev_step_through_zero_in_total_order() {
-        assert_eq!(tf64(-0.0).next(), tf64(0.0));
-        assert_eq!(tf64(0.0).prev(), tf64(-0.0));
-        assert_eq!(tf64(0.0).next(), tf64(f64::from_bits(1)));
+        assert_eq!(ff64(-0.0), ff64(0.0));
+        assert_ne!(ff64(0.0).prev(), ff64(-0.0));
+        assert_eq!(ff64(0.0).next(), ff64(f64::from_bits(1)));
         assert_eq!(
-            tf64(-0.0).prev(),
-            tf64(f64::from_bits(0x8000_0000_0000_0001))
+            ff64(0.0).prev(),
+            ff64(f64::from_bits(0x8000_0000_0000_0001))
         );
     }
 
@@ -434,14 +408,6 @@ mod tests {
     }
 
     #[test]
-    fn next_and_prev_step_around_infinities() {
-        assert_eq!(tf64(f64::MAX).next(), tf64(f64::INFINITY));
-        assert_eq!(tf64(f64::INFINITY).prev(), tf64(f64::MAX));
-        assert_eq!(tf64(f64::NEG_INFINITY).next(), tf64(-f64::MAX));
-        assert_eq!(tf64(-f64::MAX).prev(), tf64(f64::NEG_INFINITY));
-    }
-
-    #[test]
     fn checked_next_and_prev_stop_at_total_order_boundaries() {
         assert_eq!(FiniteF64::MIN.checked_prev(), None);
         assert_eq!(FiniteF64::MAX.checked_next(), None);
@@ -452,17 +418,12 @@ mod tests {
     #[test]
     fn min_and_max_are_total_order_boundaries() {
         let values = [
-            tf64(f64::NEG_INFINITY),
-            tf64(-f64::MAX),
-            tf64(-1.0),
-            tf64(-0.0),
-            tf64(0.0),
-            tf64(1.0),
-            tf64(f64::MAX),
-            tf64(f64::INFINITY),
-            tf64(f64::NAN),
-            tf64(f64::from_bits(0x7ff8_0000_0000_0001)),
-            tf64(f64::from_bits(0xfff8_0000_0000_0001)),
+            ff64(-f64::MAX),
+            ff64(-1.0),
+            ff64(-0.0),
+            ff64(0.0),
+            ff64(1.0),
+            ff64(f64::MAX),
         ];
 
         for value in values {
@@ -474,28 +435,22 @@ mod tests {
     #[test]
     fn next_and_prev_are_neighbors_in_total_order() {
         let values = [
-            tf64(f64::NEG_INFINITY),
-            tf64(-f64::MAX),
-            tf64(-1.0),
-            tf64(-0.0),
-            tf64(0.0),
-            tf64(1.0),
-            tf64(f64::MAX),
-            tf64(f64::INFINITY),
-            tf64(f64::NAN),
-            tf64(f64::from_bits(0x7ff8_0000_0000_0001)),
-            tf64(f64::from_bits(0xfff8_0000_0000_0001)),
+            ff64(f64::MIN),
+            ff64(-f64::MAX),
+            ff64(-1.0),
+            ff64(-0.0),
+            ff64(0.0),
+            ff64(1.0),
+            ff64(f64::MAX),
         ];
 
         for value in values {
-            assert_eq!(value.next().prev(), value);
-            assert_eq!(value.prev().next(), value);
+            if value != ff64(f64::MAX) {
+                assert_eq!(value.next().prev(), value);
+            }
+            if value != ff64(f64::MIN) {
+                assert_eq!(value.prev().next(), value);
+            }
         }
-    }
-
-    fn hash(value: FiniteF64) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        value.hash(&mut hasher);
-        hasher.finish()
     }
 }
