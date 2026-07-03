@@ -4,7 +4,7 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::ops::RangeInclusive;
 
-use super::float::Float;
+use super::finite_float::FiniteFloat;
 use num_traits::One;
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 use std::fmt::Debug;
@@ -16,7 +16,7 @@ use crate::RangeSetBlaze;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     /// The float is not finite (NaN or infinity).
-    FloatIsNotFinite,
+    FiniteFloatIsNotFinite,
 }
 
 /// Total ordered f64, excluding NaN, -0.0, +0.0, and infinities.
@@ -68,14 +68,17 @@ pub fn ff128(x: f128) -> FiniteF128 {
 /// ```
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
-pub struct Finite<T: Float>(T::Primitive);
+pub struct Finite<T: FiniteFloat>(T::Primitive);
 
-impl<T: Float> Finite<T> {
+impl<T: FiniteFloat> Finite<T> {
     /// The minimum value in [`f64::total_cmp`] order.
-    pub const MIN: Self = Self(T::MIN_FINITE);
+    pub const MIN: Self = Self(T::MIN);
 
     /// The maximum value in [`f64::total_cmp`] order.
-    pub const MAX: Self = Self(T::MAX_FINITE);
+    pub const MAX: Self = Self(T::MAX);
+
+    /// The maximum possible size of a range, i.e. the maximum value possible from `safe_len()`
+    pub const MAX_SIZE: T::SafeLen = T::MAX_SIZE;
 
     /// Creates a new [`Finite`] from a primitive float.
     /// # Panics
@@ -88,12 +91,12 @@ impl<T: Float> Finite<T> {
 
     /// Creates a new [`Finite`] from a primitive float.
     /// # Errors
-    /// Returns `Error::FloatIsNotFinite` if the float is not finite (NaN or infinity).
+    /// Returns `Error::FiniteFloatIsNotFinite` if the float is not finite (NaN or infinity).
     pub fn try_new(x: T::Primitive) -> Result<Self, Error> {
         if T::is_finite(x) {
             Ok(Self(T::normalize(x)))
         } else {
-            Err(Error::FloatIsNotFinite)
+            Err(Error::FiniteFloatIsNotFinite)
         }
     }
 
@@ -133,7 +136,7 @@ impl<T: Float> Finite<T> {
         debug_assert!(self != Self::MAX, "next() called on maximum value");
         let mut ordered = self.to_ordered();
         ordered = ordered.wrapping_add(&T::Ordered::one());
-        if T::is_neg_zero(ordered) {
+        if ordered == T::NEG_ZERO_ORDERED {
             ordered = ordered.wrapping_add(&T::Ordered::one());
         }
         Self::from_ordered(ordered)
@@ -147,7 +150,7 @@ impl<T: Float> Finite<T> {
         debug_assert!(self != Self::MIN, "prev() called on minimum value");
         let mut ordered = self.to_ordered();
         ordered = ordered.wrapping_sub(&T::Ordered::one());
-        if T::is_neg_zero(ordered) {
+        if ordered == T::NEG_ZERO_ORDERED {
             ordered = ordered.wrapping_sub(&T::Ordered::one());
         }
         Self::from_ordered(ordered)
@@ -215,33 +218,33 @@ impl<T: Float> Finite<T> {
 ///
 /// This runs in `O(1)` and does not allocate.
 #[must_use]
-pub const fn primitive_slice<T: Float>(values: &[T]) -> &[T::Primitive] {
-    // SAFETY: Float is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
-    // and `&[Float]` entirely interchangeable in layout and lifetimes.
+pub const fn primitive_slice<T: FiniteFloat>(values: &[T]) -> &[T::Primitive] {
+    // SAFETY: FiniteFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
+    // and `&[FiniteFloat]` entirely interchangeable in layout and lifetimes.
     unsafe { core::mem::transmute::<&[T], &[T::Primitive]>(values) }
 }
 
-impl<T: Float> PartialEq for Finite<T> {
+impl<T: FiniteFloat> PartialEq for Finite<T> {
     fn eq(&self, other: &Self) -> bool {
         T::to_bits(self.0) == T::to_bits(other.0)
     }
 }
 
-impl<T: Float> Eq for Finite<T> {}
+impl<T: FiniteFloat> Eq for Finite<T> {}
 
-impl<T: Float> PartialOrd for Finite<T> {
+impl<T: FiniteFloat> PartialOrd for Finite<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<T: Float> Ord for Finite<T> {
+impl<T: FiniteFloat> Ord for Finite<T> {
     fn cmp(&self, other: &Self) -> Ordering {
         T::total_cmp(self.0, other.0)
     }
 }
 
-impl<T: Float> Hash for Finite<T> {
+impl<T: FiniteFloat> Hash for Finite<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         T::to_bits(self.0).hash(state);
     }
@@ -261,7 +264,7 @@ impl<T: Float> Hash for Finite<T> {
 /// assert!(set.contains(FiniteF64::new(4.0)));
 /// assert!(!set.contains(FiniteF64::new(6.0)));
 ///```
-impl<T: Float> crate::Integer for Finite<T> {
+impl<T: FiniteFloat> crate::Integer for Finite<T> {
     type SafeLen = T::SafeLen;
 
     #[inline]

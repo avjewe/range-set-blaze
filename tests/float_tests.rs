@@ -17,7 +17,9 @@ use range_set_blaze::finite::{ff32, ff64};
 use range_set_blaze::{Integer, RangeMapBlaze, RangeSetBlaze, TotalF32, TotalF64, FiniteF32, FiniteF64};
 use syntactic_for::syntactic_for;
 
+#[cfg(feature = "total_float_nightly_experimental")]
 const BIG_ZERO : UIntPlusOne::<u128> = UIntPlusOne::<u128>::UInt(0);
+#[cfg(feature = "total_float_nightly_experimental")]
 const BIG_ONE : UIntPlusOne::<u128> = UIntPlusOne::<u128>::UInt(1);
 
 #[test]
@@ -46,14 +48,14 @@ fn map_complement0() {
     let empty = RangeMapBlaze::<FiniteF64, u8>::new();
     assert_eq!(empty.len(), 0);
     let full = !&empty;
-    assert_eq!(full.len(), i128::from(0xFFE0000000000000u64));
+    assert_eq!(full.len(), FiniteF64::MAX_SIZE);
     let empty = !&full;
     assert_eq!(empty.len(), 0);
 
     let empty = RangeMapBlaze::<FiniteF32, u8>::new();
     assert_eq!(empty.len(), 0);
     let full = !&empty;
-    assert_eq!(full.len(), i64::from(0xFF000000u32));
+    assert_eq!(full.len(), FiniteF32::MAX_SIZE);
     let empty = !&full;
     assert_eq!(empty.len(), 0);
 }
@@ -81,16 +83,16 @@ fn map_complement0_nightly() {
     assert_eq!(empty.len(), 0);
 
     let empty = RangeMapBlaze::<FiniteF128, u8>::new();
-    assert_eq!(empty.len(), BIG_ZERO);
+    assert_eq!(empty.len(), 0);
     let full = !&empty;
-    assert_eq!(full.len(), UIntPlusOne::<u128>::UInt(0xFFFE0000000000000000000000000000u128));
+    assert_eq!(full.len(), FiniteF128::MAX_SIZE);
     let empty = !&full;
-    assert_eq!(empty.len(), BIG_ZERO);
+    assert_eq!(empty.len(), 0);
 
     let empty = RangeMapBlaze::<FiniteF16, u8>::new();
     assert_eq!(empty.len(), 0);
     let full = !&empty;
-    assert_eq!(full.len(), i32::from(0xF800u16));
+    assert_eq!(full.len(), FiniteF16::MAX_SIZE);
     let empty = !&full;
     assert_eq!(empty.len(), 0);
 }

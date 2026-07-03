@@ -11,7 +11,7 @@ use std::fmt::{Debug};
 #[cfg(feature = "from_slice")]
 use crate::RangeSetBlaze;
 
-use super::float::Float;
+use super::total_float::TotalFloat;
 
 /// Total ordered f64, all values valid, including NaN, -0.0, +0.0, and infinities.
 pub type TotalF64 = Total<f64>;
@@ -62,9 +62,9 @@ pub const fn tf128(x: f128) -> TotalF128 {
 /// ```
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
-pub struct Total<T: Float>(T::Primitive);
+pub struct Total<T: TotalFloat>(T::Primitive);
 
-impl<T: Float> Total<T> {
+impl<T: TotalFloat> Total<T> {
     /// The minimum value in [`f64::total_cmp`] order.
     pub const MIN: Self = Self(T::MIN);
 
@@ -187,33 +187,33 @@ impl<T: Float> Total<T> {
 ///
 /// This runs in `O(1)` and does not allocate.
 #[must_use]
-pub const fn primitive_slice<T: Float>(values: &[T]) -> &[T::Primitive] {
-    // SAFETY: Float is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
-    // and `&[Float]` entirely interchangeable in layout and lifetimes.
+pub const fn primitive_slice<T: TotalFloat>(values: &[T]) -> &[T::Primitive] {
+    // SAFETY: TotalFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
+    // and `&[TotalFloat]` entirely interchangeable in layout and lifetimes.
     unsafe { core::mem::transmute::<&[T], &[T::Primitive]>(values) }
 }
 
-impl<T: Float> PartialEq for Total<T> {
+impl<T: TotalFloat> PartialEq for Total<T> {
     fn eq(&self, other: &Self) -> bool {
         T::to_bits(self.0) == T::to_bits(other.0)
     }
 }
 
-impl<T: Float> Eq for Total<T> {}
+impl<T: TotalFloat> Eq for Total<T> {}
 
-impl<T: Float> PartialOrd for Total<T> {
+impl<T: TotalFloat> PartialOrd for Total<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<T: Float> Ord for Total<T> {
+impl<T: TotalFloat> Ord for Total<T> {
     fn cmp(&self, other: &Self) -> Ordering {
         T::total_cmp(self.0, other.0)
     }
 }
 
-impl<T: Float> Hash for Total<T> {
+impl<T: TotalFloat> Hash for Total<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         T::to_bits(self.0).hash(state);
     }
@@ -233,7 +233,7 @@ impl<T: Float> Hash for Total<T> {
 /// assert!(set.contains(TotalF64::new(4.0)));
 /// assert!(!set.contains(TotalF64::new(6.0)));
 ///```
-impl<T: Float> crate::Integer for Total<T> {
+impl<T: TotalFloat> crate::Integer for Total<T> {
     type SafeLen = T::SafeLen;
 
     #[inline]
