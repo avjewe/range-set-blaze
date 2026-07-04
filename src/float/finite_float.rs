@@ -6,9 +6,9 @@ use core::hash::Hash;
 #[cfg(feature = "total_float_nightly_experimental")]
 use super::total_float::{from_ordered_16, from_ordered_128, to_ordered_16, to_ordered_128};
 use super::total_float::{from_ordered_32, from_ordered_64, to_ordered_32, to_ordered_64};
+use core::fmt::{Debug, Display};
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 use num_traits::{Num, One, Zero};
-use std::fmt::{Debug, Display};
 
 /// Minimum scaffolding necessary to implement Total and Finite for a floating point type.
 pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
@@ -39,8 +39,8 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         + PartialOrd
         + num_traits::Zero
         + num_traits::One
-        + std::ops::AddAssign
-        + std::ops::SubAssign;
+        + core::ops::AddAssign
+        + core::ops::SubAssign;
 
     /// The minimum value available, in the usual floating point sense
     const MIN: Self::Primitive;

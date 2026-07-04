@@ -5,9 +5,9 @@ use core::hash::{Hash, Hasher};
 use core::ops::RangeInclusive;
 
 use super::finite_float::FiniteFloat;
+use core::fmt::Debug;
 use num_traits::One;
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
-use std::fmt::Debug;
 
 #[cfg(feature = "from_slice")]
 use crate::RangeSetBlaze;

@@ -21,8 +21,6 @@ use syntactic_for::syntactic_for;
 
 #[cfg(feature = "total_float_nightly_experimental")]
 const BIG_ZERO: UIntPlusOne<u128> = UIntPlusOne::<u128>::UInt(0);
-#[cfg(feature = "total_float_nightly_experimental")]
-const BIG_ONE: UIntPlusOne<u128> = UIntPlusOne::<u128>::UInt(1);
 
 #[test]
 fn map_complement0() {
@@ -291,6 +289,22 @@ fn test_floats2() {
 }
 
 #[test]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn test_floats2_nightly() {
+    syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
+        $(
+            let mut a = $ty::range(0.0..=0.0);
+            assert_eq!($ty::range_next_back(&mut a), Some($ty::new(0.0)));
+            assert_eq!($ty::range_next(&mut a), None);
+
+            let mut b = $ty::new(0.0);
+            $ty::assign_sub_one(&mut b);
+            assert_eq!(b, $ty::new(0.0).prev());
+        )*
+    }}
+}
+
+#[test]
 fn test_floats() {
     let mut a = TotalF32::range(0.0..=0.0);
     assert_eq!(TotalF32::range_next_back(&mut a), Some(tf32(0.0)));
@@ -330,209 +344,213 @@ fn test_floats_nightly() {
 }
 
 #[test]
-fn total_f64_iterators() {
-    // MAX forward
-    let set = RangeSetBlaze::from_iter([TotalF64::MAX..=TotalF64::MAX]);
-    let mut iter = set.iter();
-    assert_eq!(iter.next(), Some(TotalF64::MAX));
-    assert_eq!(iter.next(), None);
+fn total_iterators() {
+    syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
+        $(
+            // MAX forward
+            let set = RangeSetBlaze::from_iter([$ty::MAX..=$ty::MAX]);
+            let mut iter = set.iter();
+            assert_eq!(iter.next(), Some($ty::MAX));
+            assert_eq!(iter.next(), None);
 
-    // MAX reverse
-    let set = RangeSetBlaze::from_iter([TotalF64::MAX..=TotalF64::MAX]);
-    let mut iter = set.iter().rev();
-    assert_eq!(iter.next(), Some(TotalF64::MAX));
-    assert_eq!(iter.next(), None);
+            // MAX reverse
+            let set = RangeSetBlaze::from_iter([$ty::MAX..=$ty::MAX]);
+            let mut iter = set.iter().rev();
+            assert_eq!(iter.next(), Some($ty::MAX));
+            assert_eq!(iter.next(), None);
 
-    // MIN forward
-    let set = RangeSetBlaze::from_iter([TotalF64::MIN..=TotalF64::MIN]);
-    let mut iter = set.iter();
-    assert_eq!(iter.next(), Some(TotalF64::MIN));
-    assert_eq!(iter.next(), None);
+            // MIN forward
+            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN]);
+            let mut iter = set.iter();
+            assert_eq!(iter.next(), Some($ty::MIN));
+            assert_eq!(iter.next(), None);
 
-    // MIN reverse
-    let set = RangeSetBlaze::from_iter([TotalF64::MIN..=TotalF64::MIN]);
-    let mut iter = set.iter().rev();
-    assert_eq!(iter.next(), Some(TotalF64::MIN));
-    assert_eq!(iter.next(), None);
-}
-
-#[test]
-fn total_f32_iterators() {
-    // MAX forward
-    let set = RangeSetBlaze::from_iter([TotalF32::MAX..=TotalF32::MAX]);
-    let mut iter = set.iter();
-    assert_eq!(iter.next(), Some(TotalF32::MAX));
-    assert_eq!(iter.next(), None);
-
-    // MAX reverse
-    let set = RangeSetBlaze::from_iter([TotalF32::MAX..=TotalF32::MAX]);
-    let mut iter = set.iter().rev();
-    assert_eq!(iter.next(), Some(TotalF32::MAX));
-    assert_eq!(iter.next(), None);
-
-    // MIN forward
-    let set = RangeSetBlaze::from_iter([TotalF32::MIN..=TotalF32::MIN]);
-    let mut iter = set.iter();
-    assert_eq!(iter.next(), Some(TotalF32::MIN));
-    assert_eq!(iter.next(), None);
-
-    // MIN reverse
-    let set = RangeSetBlaze::from_iter([TotalF32::MIN..=TotalF32::MIN]);
-    let mut iter = set.iter().rev();
-    assert_eq!(iter.next(), Some(TotalF32::MIN));
-    assert_eq!(iter.next(), None);
+            // MIN reverse
+            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN]);
+            let mut iter = set.iter().rev();
+            assert_eq!(iter.next(), Some($ty::MIN));
+            assert_eq!(iter.next(), None);
+        )*
+    }}
 }
 
 #[test]
 #[cfg(feature = "total_float_nightly_experimental")]
-fn total_f16_iterators() {
-    // MAX forward
-    let set = RangeSetBlaze::from_iter([TotalF16::MAX..=TotalF16::MAX]);
-    let mut iter = set.iter();
-    assert_eq!(iter.next(), Some(TotalF16::MAX));
-    assert_eq!(iter.next(), None);
+fn total_iterators_nightly() {
+    syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
+        $(
+            // MAX forward
+            let set = RangeSetBlaze::from_iter([$ty::MAX..=$ty::MAX]);
+            let mut iter = set.iter();
+            assert_eq!(iter.next(), Some($ty::MAX));
+            assert_eq!(iter.next(), None);
 
-    // MAX reverse
-    let set = RangeSetBlaze::from_iter([TotalF16::MAX..=TotalF16::MAX]);
-    let mut iter = set.iter().rev();
-    assert_eq!(iter.next(), Some(TotalF16::MAX));
-    assert_eq!(iter.next(), None);
+            // MAX reverse
+            let set = RangeSetBlaze::from_iter([$ty::MAX..=$ty::MAX]);
+            let mut iter = set.iter().rev();
+            assert_eq!(iter.next(), Some($ty::MAX));
+            assert_eq!(iter.next(), None);
 
-    // MIN forward
-    let set = RangeSetBlaze::from_iter([TotalF16::MIN..=TotalF16::MIN]);
-    let mut iter = set.iter();
-    assert_eq!(iter.next(), Some(TotalF16::MIN));
-    assert_eq!(iter.next(), None);
+            // MIN forward
+            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN]);
+            let mut iter = set.iter();
+            assert_eq!(iter.next(), Some($ty::MIN));
+            assert_eq!(iter.next(), None);
 
-    // MIN reverse
-    let set = RangeSetBlaze::from_iter([TotalF16::MIN..=TotalF16::MIN]);
-    let mut iter = set.iter().rev();
-    assert_eq!(iter.next(), Some(TotalF16::MIN));
-    assert_eq!(iter.next(), None);
-}
-#[test]
-#[cfg(feature = "total_float_nightly_experimental")]
-fn total_f128_iterators() {
-    // MAX forward
-    let set = RangeSetBlaze::from_iter([TotalF128::MAX..=TotalF128::MAX]);
-    let mut iter = set.iter();
-    assert_eq!(iter.next(), Some(TotalF128::MAX));
-    assert_eq!(iter.next(), None);
-
-    // MAX reverse
-    let set = RangeSetBlaze::from_iter([TotalF128::MAX..=TotalF128::MAX]);
-    let mut iter = set.iter().rev();
-    assert_eq!(iter.next(), Some(TotalF128::MAX));
-    assert_eq!(iter.next(), None);
-
-    // MIN forward
-    let set = RangeSetBlaze::from_iter([TotalF128::MIN..=TotalF128::MIN]);
-    let mut iter = set.iter();
-    assert_eq!(iter.next(), Some(TotalF128::MIN));
-    assert_eq!(iter.next(), None);
-
-    // MIN reverse
-    let set = RangeSetBlaze::from_iter([TotalF128::MIN..=TotalF128::MIN]);
-    let mut iter = set.iter().rev();
-    assert_eq!(iter.next(), Some(TotalF128::MIN));
-    assert_eq!(iter.next(), None);
+            // MIN reverse
+            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN]);
+            let mut iter = set.iter().rev();
+            assert_eq!(iter.next(), Some($ty::MIN));
+            assert_eq!(iter.next(), None);
+        )*
+    }}
 }
 
 #[test]
-fn total_f64_complement() {
-    let set = RangeSetBlaze::from_iter([TotalF64::MAX..=TotalF64::MAX]);
-    assert!(set.contains(TotalF64::MAX));
-    assert!(!set.contains(TotalF64::MAX.prev()));
-    assert_eq!(set.len(), 1);
-    let set = !set;
-    assert!(!set.contains(TotalF64::MAX));
-    assert!(set.contains(TotalF64::MAX.prev()));
-    assert_eq!(set.len(), u64::MAX as <TotalF64 as Integer>::SafeLen);
+fn total_complement() {
+    syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
+        $(
+            let set = RangeSetBlaze::from_iter([$ty::MAX..=$ty::MAX]);
+            assert!(set.contains($ty::MAX));
+            assert!(!set.contains($ty::MAX.prev()));
+            assert_eq!(set.len(), 1);
+            let set = !set;
+            assert!(!set.contains($ty::MAX));
+            assert!(set.contains($ty::MAX.prev()));
+            assert_eq!(set.len(), $ty::MAX_SIZE - 1);
 
-    let set = RangeSetBlaze::from_iter([TotalF64::MIN..=TotalF64::MIN]);
-    assert!(set.contains(TotalF64::MIN));
-    assert!(!set.contains(TotalF64::MIN.next()));
-    assert_eq!(set.len(), 1);
-    let set = !set;
-    assert!(!set.contains(TotalF64::MIN));
-    assert!(set.contains(TotalF64::MIN.next()));
-    assert_eq!(set.len(), u64::MAX as <TotalF64 as Integer>::SafeLen);
+            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN]);
+            assert!(set.contains($ty::MIN));
+            assert!(!set.contains($ty::MIN.next()));
+            assert_eq!(set.len(), 1);
+            let set = !set;
+            assert!(!set.contains($ty::MIN));
+            assert!(set.contains($ty::MIN.next()));
+            assert_eq!(set.len(), $ty::MAX_SIZE - 1);
 
-    let set = RangeSetBlaze::from_iter([TotalF64::MIN..=TotalF64::MIN.next()]);
-    assert!(set.contains(TotalF64::MIN));
-    assert!(set.contains(TotalF64::MIN.next()));
-    assert!(!set.contains(TotalF64::MIN.next().next()));
-    assert_eq!(set.len(), 2);
-    let set = !set;
-    assert!(!set.contains(TotalF64::MIN));
-    assert!(!set.contains(TotalF64::MIN.next()));
-    assert!(set.contains(TotalF64::MIN.next().next()));
-    assert_eq!(set.len(), (u64::MAX as <TotalF64 as Integer>::SafeLen) - 1);
-}
-
-#[test]
-fn total_f32_complement() {
-    let set = RangeSetBlaze::from_iter([TotalF32::MAX..=TotalF32::MAX]);
-    assert!(set.contains(TotalF32::MAX));
-    assert!(!set.contains(TotalF32::MAX.prev()));
-    assert_eq!(set.len(), 1);
-    let set = !set;
-    assert!(!set.contains(TotalF32::MAX));
-    assert!(set.contains(TotalF32::MAX.prev()));
-    assert_eq!(set.len(), u32::MAX as <TotalF32 as Integer>::SafeLen);
-
-    let set = RangeSetBlaze::from_iter([TotalF32::MIN..=TotalF32::MIN]);
-    assert!(set.contains(TotalF32::MIN));
-    assert!(!set.contains(TotalF32::MIN.next()));
-    assert_eq!(set.len(), 1);
-    let set = !set;
-    assert!(!set.contains(TotalF32::MIN));
-    assert!(set.contains(TotalF32::MIN.next()));
-    assert_eq!(set.len(), u32::MAX as <TotalF32 as Integer>::SafeLen);
+            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN.next()]);
+            assert!(set.contains($ty::MIN));
+            assert!(set.contains($ty::MIN.next()));
+            assert!(!set.contains($ty::MIN.next().next()));
+            assert_eq!(set.len(), 2);
+            let set = !set;
+            assert!(!set.contains($ty::MIN));
+            assert!(!set.contains($ty::MIN.next()));
+            assert!(set.contains($ty::MIN.next().next()));
+            assert_eq!(set.len(), $ty::MAX_SIZE - 2);
+        )*
+    }}
 }
 
 #[test]
 #[cfg(feature = "total_float_nightly_experimental")]
-fn total_f16_complement() {
-    let set = RangeSetBlaze::from_iter([TotalF16::MAX..=TotalF16::MAX]);
-    assert!(set.contains(TotalF16::MAX));
-    assert!(!set.contains(TotalF16::MAX.prev()));
-    assert_eq!(set.len(), 1);
-    let set = !set;
-    assert!(!set.contains(TotalF16::MAX));
-    assert!(set.contains(TotalF16::MAX.prev()));
-    assert_eq!(set.len(), u16::MAX as <TotalF16 as Integer>::SafeLen);
+fn total_complement_nightly() {
+    // Total128::SafeLen is UIntPlusOne, which doesn't work smoothly here, so it's a separate test below
+    syntactic_for! { ty in [TotalF16, /*TotalF128,*/ FiniteF16, FiniteF128] {
+        $(
+            let set = RangeSetBlaze::from_iter([$ty::MAX..=$ty::MAX]);
+            assert!(set.contains($ty::MAX));
+            assert!(!set.contains($ty::MAX.prev()));
+            assert_eq!(set.len(), 1);
+            let set = !set;
+            assert!(!set.contains($ty::MAX));
+            assert!(set.contains($ty::MAX.prev()));
+            assert_eq!(set.len(), $ty::MAX_SIZE - 1);
 
-    let set = RangeSetBlaze::from_iter([TotalF16::MIN..=TotalF16::MIN]);
-    assert!(set.contains(TotalF16::MIN));
-    assert!(!set.contains(TotalF16::MIN.next()));
-    assert_eq!(set.len(), 1);
-    let set = !set;
-    assert!(!set.contains(TotalF16::MIN));
-    assert!(set.contains(TotalF16::MIN.next()));
-    assert_eq!(set.len(), u16::MAX as <TotalF16 as Integer>::SafeLen);
+            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN]);
+            assert!(set.contains($ty::MIN));
+            assert!(!set.contains($ty::MIN.next()));
+            assert_eq!(set.len(), 1);
+            let set = !set;
+            assert!(!set.contains($ty::MIN));
+            assert!(set.contains($ty::MIN.next()));
+            assert_eq!(set.len(), $ty::MAX_SIZE - 1);
+
+            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN.next()]);
+            assert!(set.contains($ty::MIN));
+            assert!(set.contains($ty::MIN.next()));
+            assert!(!set.contains($ty::MIN.next().next()));
+            assert_eq!(set.len(), 2);
+            let set = !set;
+            assert!(!set.contains($ty::MIN));
+            assert!(!set.contains($ty::MIN.next()));
+            assert!(set.contains($ty::MIN.next().next()));
+            assert_eq!(set.len(), $ty::MAX_SIZE - 2);
+        )*
+    }}
 }
 
 #[test]
 #[cfg(feature = "total_float_nightly_experimental")]
-fn total_f128_complement() {
-    let max = UIntPlusOne::<u128>::UInt(u128::MAX);
-
+fn total_complement_total128() {
     let set = RangeSetBlaze::from_iter([TotalF128::MAX..=TotalF128::MAX]);
     assert!(set.contains(TotalF128::MAX));
     assert!(!set.contains(TotalF128::MAX.prev()));
-    assert_eq!(set.len(), BIG_ONE);
+    assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(1));
     let set = !set;
     assert!(!set.contains(TotalF128::MAX));
     assert!(set.contains(TotalF128::MAX.prev()));
-    assert_eq!(set.len(), max);
+    assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(u128::MAX));
 
     let set = RangeSetBlaze::from_iter([TotalF128::MIN..=TotalF128::MIN]);
     assert!(set.contains(TotalF128::MIN));
     assert!(!set.contains(TotalF128::MIN.next()));
-    assert_eq!(set.len(), BIG_ONE);
+    assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(1));
     let set = !set;
     assert!(!set.contains(TotalF128::MIN));
     assert!(set.contains(TotalF128::MIN.next()));
-    assert_eq!(set.len(), max);
+    assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(u128::MAX));
+
+    let set = RangeSetBlaze::from_iter([TotalF128::MIN..=TotalF128::MIN.next()]);
+    assert!(set.contains(TotalF128::MIN));
+    assert!(set.contains(TotalF128::MIN.next()));
+    assert!(!set.contains(TotalF128::MIN.next().next()));
+    assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(2));
+    let set = !set;
+    assert!(!set.contains(TotalF128::MIN));
+    assert!(!set.contains(TotalF128::MIN.next()));
+    assert!(set.contains(TotalF128::MIN.next().next()));
+    assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(u128::MAX - 1));
+}
+
+#[test]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn full_16() {
+    syntactic_for! { ty in [TotalF16,  FiniteF16] {
+        $(
+            let mut x = $ty::MIN;
+            let mut count : <$ty as Integer>::SafeLen = 0;
+            loop {
+                assert!($ty::MIN <= x && x <= $ty::MAX);
+                assert_eq!($ty::safe_len(&($ty::MIN..=x)), count + 1);
+                assert_eq!($ty::safe_len(&(x..=$ty::MAX)), $ty::MAX_SIZE - count );
+                assert_eq!($ty::inclusive_end_from_start(x, $ty::MAX_SIZE - count), $ty::MAX);
+                assert_eq!($ty::start_from_inclusive_end($ty::MAX, $ty::MAX_SIZE - count), x);
+                assert_eq!($ty::inclusive_end_from_start($ty::MIN, count+1), x);
+                assert_eq!($ty::start_from_inclusive_end(x, count+1), $ty::MIN);
+                if x != $ty::MIN  {
+                    assert_eq!(x.prev().next(), x);
+                    assert!(x.prev() < x);
+                    assert_eq!($ty::safe_len(&(x.prev()..=x)), 2);
+                    assert_eq!($ty::start_from_inclusive_end(x, 2), x.prev());
+                    assert!(x.prev() < x);
+                    assert!(x > x.prev());
+                    assert!(x == x);
+                }
+                if x != $ty::MAX {
+                    assert_eq!(x.next().prev(), x);
+                    assert!(x.next() > x);
+                    assert_eq!($ty::safe_len(&(x..=x.next())), 2);
+                    assert_eq!($ty::inclusive_end_from_start(x,2), x.next());
+                    assert!(x.next() > x);
+                    assert!(x < x.next());
+                }
+                if x == $ty::MAX {
+                    break;
+                }
+                x = x.next();
+                count += 1;
+            }
+        )*
+    }}
 }

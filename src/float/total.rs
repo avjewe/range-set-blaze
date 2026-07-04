@@ -4,9 +4,9 @@ use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::ops::RangeInclusive;
 
+use core::fmt::Debug;
 use num_traits::One;
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
-use std::fmt::Debug;
 
 #[cfg(feature = "from_slice")]
 use crate::RangeSetBlaze;
@@ -70,6 +70,9 @@ impl<T: TotalFloat> Total<T> {
 
     /// The maximum value in [`f64::total_cmp`] order.
     pub const MAX: Self = Self(T::MAX);
+
+    /// The maximum possible size of a range, i.e. the maximum value possible from `safe_len()`
+    pub const MAX_SIZE: T::SafeLen = T::MAX_SIZE;
 
     /// Creates a new [`Total`] from a primitive float.
     #[must_use]
@@ -466,5 +469,14 @@ mod tests {
         let mut hasher = DefaultHasher::new();
         value.hash(&mut hasher);
         hasher.finish()
+    }
+    #[test]
+    #[cfg(feature = "total_float_nightly_experimental")]
+    fn ordered_round_trip() {
+        use crate::total_float::from_ordered_16;
+        use crate::total_float::to_ordered_16;
+        for x in i16::MIN..=i16::MAX {
+            assert_eq!(to_ordered_16(from_ordered_16(x)), x);
+        }
     }
 }

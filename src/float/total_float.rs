@@ -3,9 +3,9 @@
 use core::cmp::Ordering;
 use core::hash::Hash;
 
+use core::fmt::{Debug, Display};
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 use num_traits::{Num, One, Zero};
-use std::fmt::{Debug, Display};
 
 #[cfg(feature = "total_float_nightly_experimental")]
 use crate::UIntPlusOne;
@@ -30,13 +30,16 @@ pub trait TotalFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         + PartialOrd
         + num_traits::Zero
         + num_traits::One
-        + std::ops::AddAssign
-        + std::ops::SubAssign;
+        + core::ops::AddAssign
+        + core::ops::SubAssign;
 
     /// The minimum value available, in the `total_cmp`, range-set sense
     const MIN: Self::Primitive;
     /// The maximum value available, in the `total_cmp`, range-set sense
     const MAX: Self::Primitive;
+
+    /// The maximum possible size of a range, i.e. the maximum value possible from `safe_len()`
+    const MAX_SIZE: Self::SafeLen;
 
     /// Transform Primitive into Ordered, to allow comparison and addition
     fn to_ordered(x: Self::Primitive) -> Self::Ordered;
@@ -191,6 +194,7 @@ impl TotalFloat for f64 {
 
     const MIN: Self = Self::from_bits(u64::MAX);
     const MAX: Self = Self::from_bits(0x7fff_ffff_ffff_ffff);
+    const MAX_SIZE: Self::SafeLen = u64::MAX as Self::SafeLen + 1;
 
     impl_total_ops!(to_ordered_64);
     impl_total_ops_safelen!();
@@ -208,6 +212,7 @@ impl TotalFloat for f32 {
 
     const MIN: Self = Self::from_bits(u32::MAX);
     const MAX: Self = Self::from_bits(0x7fff_ffff);
+    const MAX_SIZE: Self::SafeLen = u32::MAX as Self::SafeLen + 1;
 
     impl_total_ops!(to_ordered_32);
     impl_total_ops_safelen!();
@@ -226,6 +231,7 @@ impl TotalFloat for f16 {
 
     const MIN: Self = Self::from_bits(u16::MAX);
     const MAX: Self = Self::from_bits(0x7fff);
+    const MAX_SIZE: Self::SafeLen = u16::MAX as Self::SafeLen + 1;
 
     impl_total_ops!(to_ordered_16);
     impl_total_ops_safelen!();
@@ -243,6 +249,7 @@ impl TotalFloat for f128 {
 
     const MIN: Self = Self::from_bits(u128::MAX);
     const MAX: Self = Self::from_bits(0x7fff_ffff_ffff_ffff_ffff_ffff_ffff_ffff);
+    const MAX_SIZE: Self::SafeLen = UIntPlusOne::<u128>::MaxPlusOne;
 
     impl_total_ops!(to_ordered_128);
 
