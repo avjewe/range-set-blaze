@@ -1,4 +1,7 @@
-//! Ordered `f64` support.
+//! Internal type to abstract a floating point value,
+//! providing the necessary functionality for the `Finite` types to `impl Integer`.
+//! 
+//! Not intended for customer use, but must be public for Rust reasons. Use `Finite` instead.
 
 use core::cmp::Ordering;
 use core::hash::Hash;
@@ -16,7 +19,7 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
     type Primitive: FiniteFloat;
     /// The result of `to_bits()` on the wrapped type, e.g. u64
     type Bits: Num + Copy + Hash + Send + Sync + Debug;
-    /// The intermediate type used for comparison, e.g. i64
+    /// The intermediate type used for `total_cmp` comparison, e.g. i64
     type Ordered: WrappingAdd
         + WrappingSub
         + One
@@ -27,7 +30,7 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         + Debug
         + Display
         + PartialOrd;
-    /// Integral type for holding size of any range. Must hold at least one more value than `Bits`.
+    /// Integral type for holding size of any range. Typically this is the same as Bits.
     type SafeLen: Send
         + Sync
         + Debug
@@ -47,9 +50,9 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
     /// The maximum value available, in the usual floating point sense
     const MAX: Self::Primitive;
 
-    /// The minimum value available, in the usual floating point sense
+    /// `MIN` converted to the Ordered type
     const MIN_ORDERED: Self::Ordered;
-    /// The maximum value available, in the usual floating point sense
+    /// `MAX` converted to the Ordered type
     const MAX_ORDERED: Self::Ordered;
 
     /// The maximum possible size of a range, i.e. the maximum value possible from `safe_len()`
@@ -63,23 +66,22 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
 
     /// Transform Primitive into Ordered, to allow comparison and addition
     fn to_ordered(x: Self::Primitive) -> Self::Ordered;
-    /// Transform Ordered back to Primitive, presumably after some addition
+    /// Transform Ordered back to Primitive
     fn from_ordered(x: Self::Ordered) -> Self::Primitive;
-    /// Transform Primitive into a type with more concrete semantics
+    /// Transform Primitive into a type with more concrete semantics, e.g. `f64::to_bits()`
     fn to_bits(x: Self::Primitive) -> Self::Bits;
     /// Return the size of the inclusive range from start to end
     fn safe_len(start: Self::Ordered, end: Self::Ordered) -> Self::SafeLen;
-    /// Converts [`SafeLen`] to `f64`, potentially losing precision for large values.
+    /// Converts [`FiniteFloat::SafeLen`] to `f64`, potentially losing precision for large values.
     fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64;
-    /// Converts a `f64` to [`SafeLen`] using the formula `f as Self::SafeLen`. For large integer types, this will result in a loss of precision.
+    /// Converts a `f64` to [`FiniteFloat::SafeLen`] using the formula `f as Self::SafeLen`. For large integer types, this will result in a loss of precision.
     fn f64_to_safe_len_lossy(f: f64) -> Self::SafeLen;
-    /// return (x - 1) as `Self::Ordered`
+    /// return (x - 1) as `Self::Ordered`. `x` must not be zero.
     fn safe_as_ordered(x: Self::SafeLen) -> Self::Ordered;
     /// Returns the ordering between `x` and `y`, as per the standard library's `f64::total_cmp`.
-    /// Needed because f16 is not supported in `num_traits`.
     fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering;
 
-    /// Computes `self + (b - 1)` where `b` is of type [`SafeLen`].
+    /// Computes `self + (b - 1)` where `b` is of type [`FiniteFloat::SafeLen`].
     fn inclusive_end_from_start(a: Self::Primitive, b: Self::SafeLen) -> Self::Primitive {
         #[cfg(debug_assertions)]
         {
@@ -97,7 +99,7 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         }
         Self::from_ordered(end)
     }
-    /// Computes `self - (b - 1)` where `b` is of type [`Integer::SafeLen`].
+    /// Computes `self - (b - 1)` where `b` is of type [`FiniteFloat::SafeLen`].
     fn start_from_inclusive_end(a: Self::Primitive, b: Self::SafeLen) -> Self::Primitive {
         #[cfg(debug_assertions)]
         {

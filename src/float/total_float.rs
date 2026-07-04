@@ -1,4 +1,7 @@
-//! Ordered `f64` support.
+//! Internal type to abstract a floating point value,
+//! providing the necessary functionality for the `Total` types to `impl Integer`.
+//! 
+//! Not intended for customer use, but must be public for Rust reasons. Use `Total` instead.
 
 use core::cmp::Ordering;
 use core::hash::Hash;
@@ -33,9 +36,9 @@ pub trait TotalFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         + core::ops::AddAssign
         + core::ops::SubAssign;
 
-    /// The minimum value available, in the `total_cmp`, range-set sense
+    /// The minimum value available, in the `total_cmp`  sense
     const MIN: Self::Primitive;
-    /// The maximum value available, in the `total_cmp`, range-set sense
+    /// The maximum value available, in the `total_cmp`  sense
     const MAX: Self::Primitive;
 
     /// The maximum possible size of a range, i.e. the maximum value possible from `safe_len()`
@@ -45,21 +48,20 @@ pub trait TotalFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
     fn to_ordered(x: Self::Primitive) -> Self::Ordered;
     /// Transform Ordered back to Primitive, presumably after some addition
     fn from_ordered(x: Self::Ordered) -> Self::Primitive;
-    /// Transform Primitive into a type with more concrete semantics
+    /// Transform Primitive into a type with more concrete semantics, e.g. `f64::to_bits()`
     fn to_bits(x: Self::Primitive) -> Self::Bits;
     /// Return the size of the inclusive range from start to end
     fn safe_len(start: Self::Ordered, end: Self::Ordered) -> Self::SafeLen;
-    /// Converts [`SafeLen`] to `f64`, potentially losing precision for large values.
+    /// Converts [`TotalFloat::SafeLen`] to `f64`, potentially losing precision for large values.
     fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64;
-    /// Converts a `f64` to [`SafeLen`] using the formula `f as Self::SafeLen`. For large integer types, this will result in a loss of precision.
+    /// Converts a `f64` to [`TotalFloat::SafeLen`] using the formula `f as Self::SafeLen`. For large integer types, this will result in a loss of precision.
     fn f64_to_safe_len_lossy(f: f64) -> Self::SafeLen;
-    /// return (x - 1) as `Self::Ordered`
+    /// return (x - 1) as `Self::Ordered`. x must not be zero.
     fn safe_as_ordered(x: Self::SafeLen) -> Self::Ordered;
     /// Returns the ordering between `x` and `y`, as per the standard library's `f64::total_cmp`.
-    /// Needed because f16 is not supported in `num_traits`.
     fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering;
 
-    /// Computes `self + (b - 1)` where `b` is of type [`SafeLen`].
+    /// Computes `self + (b - 1)` where `b` is of type [`TotalFloat::SafeLen`].
     fn inclusive_end_from_start(a: Self::Primitive, b: Self::SafeLen) -> Self::Primitive {
         #[cfg(debug_assertions)]
         {
@@ -72,7 +74,7 @@ pub trait TotalFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         // If b is in range, two’s-complement wrap-around yields the correct inclusive end even if the add overflows
         Self::from_ordered(Self::to_ordered(a).wrapping_add(&Self::safe_as_ordered(b)))
     }
-    /// Computes `self - (b - 1)` where `b` is of type [`Integer::SafeLen`].
+    /// Computes `self - (b - 1)` where `b` is of type [`TotalFloat::SafeLen`].
     fn start_from_inclusive_end(a: Self::Primitive, b: Self::SafeLen) -> Self::Primitive {
         #[cfg(debug_assertions)]
         {

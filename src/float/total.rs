@@ -1,4 +1,8 @@
-//! Ordered `f64` support.
+//! Total is a floating point type, suitable for use in ranges. All values are valid.
+//! 
+//! Ordering and other semantics are as per `total_cmp`.\
+//! Every distinct bit pattern is a separate valid value, even though quite a few of them are NaN.\
+//! For example, in a `Total<f32>` all 16 million different NAN values are distinct from each other.
 
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
@@ -24,35 +28,35 @@ pub type TotalF16 = Total<f16>;
 #[cfg(feature = "total_float_nightly_experimental")]
 pub type TotalF128 = Total<f128>;
 
-/// Construct a [`TotalF64`] from an `f64`.
+/// Construct a [`TotalF64`] from an `f64`. Shorthand for [`TotalF64::new`]
 #[must_use]
 pub const fn tf64(x: f64) -> TotalF64 {
     Total::<f64>::new(x)
 }
 
-/// Construct a [`TotalF32`] from an `f32`.
+/// Construct a [`TotalF32`] from an `f32`. Shorthand for [`TotalF32::new`]
 #[must_use]
 pub const fn tf32(x: f32) -> TotalF32 {
     Total::<f32>::new(x)
 }
 
-/// Construct a [`TotalF16`] from an `f16`.
+/// Construct a [`TotalF16`] from an `f16`. Shorthand for [`Total::<f16>::new`]
 #[cfg(feature = "total_float_nightly_experimental")]
 #[must_use]
 pub const fn tf16(x: f16) -> TotalF16 {
     Total::<f16>::new(x)
 }
 
-/// Construct a [`TotalF128`] from an `f128`.
+/// Construct a [`TotalF128`] from an `f128`. Shorthand for [`Total::<f128>::new`]
 #[cfg(feature = "total_float_nightly_experimental")]
 #[must_use]
 pub const fn tf128(x: f128) -> TotalF128 {
     Total::<f128>::new(x)
 }
 
-/// Experimental: A transparent wrapper around [`f64`] with total ordering.
+/// Experimental: A transparent wrapper around floating point values with total ordering.
 ///
-/// Comparison, equality, and hashing all agree with [`f64::total_cmp`].
+/// Comparison, equality, and hashing all agree with `total_cmp`.
 ///
 /// # Enabling
 ///
@@ -60,50 +64,109 @@ pub const fn tf128(x: f128) -> TotalF128 {
 /// ```bash
 /// cargo add range-set-blaze --features "total_float_experimental"
 /// ```
+/// That provides the `Total32` and `Total64` types.
+/// 
+/// If you're building with nightly, you can instead use the `total_float_nightly_experimental` feature.
+/// ```bash
+/// cargo add range-set-blaze --features "total_float_nightly_experimental"
+/// ```
+/// To also use the `Total16` and `Total128` types.
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Total<T: TotalFloat>(T::Primitive);
 
 impl<T: TotalFloat> Total<T> {
-    /// The minimum value in [`f64::total_cmp`] order.
+    /// The minimum value that can be represented by the type.
+    /// I.e., the smallest possible value according to `total_cmp`\
+    /// Maps directly to [`crate::Integer::min_value()`]
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// assert_eq!(TotalF64::MIN, TotalF64::new(f64::from_bits(u64::MAX)));
+    /// ```
     pub const MIN: Self = Self(T::MIN);
 
-    /// The maximum value in [`f64::total_cmp`] order.
+    /// The maximum value that can be represented by the type.
+    /// I.e., the smallest possible value according to `total_cmp`\
+    /// Maps directly to [`crate::Integer::max_value()`]
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// assert_eq!(TotalF64::MAX, TotalF64::new(f64::from_bits(0x7fff_ffff_ffff_ffff)));
+    /// ```
     pub const MAX: Self = Self(T::MAX);
 
-    /// The maximum possible size of a range, i.e. the maximum value possible from `safe_len()`
+    /// The maximum possible size of a range, i.e. the size if `[MIN..=MAX]`
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF32;
+    ///
+    /// assert_eq!(TotalF32::MAX_SIZE, u32::MAX as i64 + 1);
+    /// ```
     pub const MAX_SIZE: T::SafeLen = T::MAX_SIZE;
 
     /// Creates a new [`Total`] from a primitive float.
+    /// All values are legal. 
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// let _ = TotalF64::new(f64::INFINITY);
+    /// ```
     #[must_use]
     pub const fn new(x: T::Primitive) -> Self {
         Self(x)
     }
 
-    /// Computes `self + (b - 1)` where `b` is of type [`SafeLen`].
+    /// Computes `self + (b - 1)` where `b` is of type `SafeLen`.
     #[must_use]
     pub fn inclusive_end_from_start(self, b: T::SafeLen) -> Self {
         Self(T::inclusive_end_from_start(self.0, b))
     }
 
-    /// Computes `self - (b - 1)` where `b` is of type [`SafeLen`].
+    /// Computes `self - (b - 1)` where `b` is of type `SafeLen`.
     #[must_use]
     pub fn start_from_inclusive_end(self, b: T::SafeLen) -> Self {
         Self(T::start_from_inclusive_end(self.0, b))
     }
 
-    /// Returns the wrapped [`f64`] value.
+    /// Returns the wrapped value.
+    /// 
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// assert_eq!(TotalF64::new(42.0).into_inner(), 42.0);
+    /// ```
     #[must_use]
     pub const fn into_inner(self) -> T::Primitive {
         self.0
     }
 
     /// Transforms the float bits into the monotonically ordered Ordered space used by `total_cmp`.
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// assert_eq!(2.0 < 3.0, TotalF64::new(2.0).to_ordered() < TotalF64::new(3.0).to_ordered());
+    /// ```
     pub fn to_ordered(self) -> T::Ordered {
         T::to_ordered(self.0)
     }
 
     /// Transforms the ordered Ordered space back into standard float bits.
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// assert_eq!(TotalF64::from_ordered(TotalF64::new(42.0).to_ordered()).into_inner(), 42.0);
+    /// ```
     pub fn from_ordered(x: T::Ordered) -> Self {
         Self(T::from_ordered(x))
     }
@@ -175,7 +238,7 @@ impl<T: TotalFloat> Total<T> {
         values.into_iter().map(Self)
     }
 
-    /// Views primitive [`f64`] values as ordered [`Total64`] values.
+    /// Views primitive values as ordered [`Total`] values.
     ///
     /// This runs in `O(1)` and does not allocate.
     #[must_use]
@@ -222,20 +285,6 @@ impl<T: TotalFloat> Hash for Total<T> {
     }
 }
 
-///```
-/// use range_set_blaze::{RangeSetBlaze, TotalF64};
-/// let set = RangeSetBlaze::from_iter([TotalF64::new(3.0)..=TotalF64::new(5.0)]);
-/// assert!(set.contains(TotalF64::new(3.1)));
-/// assert!(!set.contains(TotalF64::new(2.9)));
-///
-/// let set = RangeSetBlaze::from(TotalF64::range(3.0..=5.0));
-/// assert!(set.contains(TotalF64::new(4.9)));
-/// assert!(!set.contains(TotalF64::new(5.1)));
-///
-/// let set = RangeSetBlaze::from_iter(TotalF64::ranges([3.0..=5.0, 7.0..=9.0]));
-/// assert!(set.contains(TotalF64::new(4.0)));
-/// assert!(!set.contains(TotalF64::new(6.0)));
-///```
 impl<T: TotalFloat> crate::Integer for Total<T> {
     type SafeLen = T::SafeLen;
 
