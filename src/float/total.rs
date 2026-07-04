@@ -1,5 +1,5 @@
 //! Total is a floating point type, suitable for use in ranges. All values are valid.
-//! 
+//!
 //! Ordering and other semantics are as per `total_cmp`.\
 //! Every distinct bit pattern is a separate valid value, even though quite a few of them are NaN.\
 //! For example, in a `Total<f32>` all 16 million different NAN values are distinct from each other.
@@ -65,7 +65,7 @@ pub const fn tf128(x: f128) -> TotalF128 {
 /// cargo add range-set-blaze --features "total_float_experimental"
 /// ```
 /// That provides the `Total32` and `Total64` types.
-/// 
+///
 /// If you're building with nightly, you can instead use the `total_float_nightly_experimental` feature.
 /// ```bash
 /// cargo add range-set-blaze --features "total_float_nightly_experimental"
@@ -111,7 +111,7 @@ impl<T: TotalFloat> Total<T> {
     pub const MAX_SIZE: T::SafeLen = T::MAX_SIZE;
 
     /// Creates a new [`Total`] from a primitive float.
-    /// All values are legal. 
+    /// All values are legal.
     ///
     /// # Examples
     /// ```
@@ -137,7 +137,7 @@ impl<T: TotalFloat> Total<T> {
     }
 
     /// Returns the wrapped value.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use range_set_blaze::TotalF64;

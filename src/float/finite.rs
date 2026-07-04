@@ -1,5 +1,5 @@
 //! Finite is a floating point type, suitable for use in ranges. Only finite values are valid.
-//! 
+//!
 //! Ordering and other semantics are as per normal floating point comparisons.
 
 use core::cmp::Ordering;
@@ -69,7 +69,7 @@ pub fn ff128(x: f128) -> FiniteF128 {
 /// cargo add range-set-blaze --features "total_float_experimental"
 /// ```
 /// That provides the `Finite32` and `Finite64` types.
-/// 
+///
 /// If you're building with nightly, you can instead use the `total_float_nightly_experimental` feature.
 /// ```bash
 /// cargo add range-set-blaze --features "total_float_nightly_experimental"
@@ -163,7 +163,7 @@ impl<T: FiniteFloat> Finite<T> {
     }
 
     /// Returns the wrapped value.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use range_set_blaze::FiniteF64;

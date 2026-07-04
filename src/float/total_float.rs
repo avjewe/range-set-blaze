@@ -1,6 +1,6 @@
 //! Internal type to abstract a floating point value,
 //! providing the necessary functionality for the `Total` types to `impl Integer`.
-//! 
+//!
 //! Not intended for customer use, but must be public for Rust reasons. Use `Total` instead.
 
 use core::cmp::Ordering;

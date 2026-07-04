@@ -1,13 +1,13 @@
 //! Experimental support for floating point ranges.\
 //! Enable with `total_float_experimental` (stable, `f32`/`f64`) and
 //! `total_float_nightly_experimental` (nightly, adds `f16`/`f128`).
-//! 
+//!
 //! Exports two types of floating point range types.\
 //! Total: Every bit pattern is valid and distinct.\
 //! Finite: Only valid floating point values are valid, e.g. `f64::MIN..=f64::MAX`. Plus, -0.0 is treated as 0.0
-//! 
+//!
 //! Each of those is available in four sizes: 16, 32, 64 and 128.
-//! 
+//!
 //!```
 //! use range_set_blaze::{RangeSetBlaze, FiniteF64, TotalF32, TotalF64};
 //! let set = RangeSetBlaze::from_iter([TotalF64::new(3.0)..=TotalF64::new(5.0)]);
