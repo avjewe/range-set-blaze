@@ -4,7 +4,7 @@
 //!
 //! Exports two types of floating point range types.\
 //! Total: Every bit pattern is valid and distinct.\
-//! Finite: Only valid floating point values are valid, e.g. `f64::MIN..=f64::MAX`. Plus, -0.0 is treated as 0.0
+//! Finite: Only finite floating point values are valid, e.g. `f64::MIN..=f64::MAX`. Also, -0.0 is treated as 0.0
 //!
 //! Each of those is available in four sizes: 16, 32, 64 and 128.
 //!

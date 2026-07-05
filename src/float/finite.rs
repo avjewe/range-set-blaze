@@ -1,6 +1,23 @@
 //! Finite is a floating point type, suitable for use in ranges. Only finite values are valid.
 //!
 //! Ordering and other semantics are as per normal floating point comparisons.
+//!
+//! Enable with `total_float_experimental` (stable, `FiniteF32`/`FiniteF64`) and
+//! `total_float_nightly_experimental` (nightly, adds `FiniteF16`/`FiniteF128`).
+//!```
+//! use range_set_blaze::{RangeSetBlaze, FiniteF64, FiniteF32};
+//! let set = RangeSetBlaze::from_iter([FiniteF64::new(3.0)..=FiniteF64::new(5.0)]);
+//! assert!(set.contains(FiniteF64::new(3.1)));
+//! assert!(!set.contains(FiniteF64::new(2.9)));
+//!
+//! let set = RangeSetBlaze::from(FiniteF64::range(3.0..=5.0));
+//! assert!(set.contains(FiniteF64::new(4.9)));
+//! assert!(!set.contains(FiniteF64::new(5.1)));
+//!
+//! let set = RangeSetBlaze::from_iter(FiniteF32::ranges([3.0..=5.0, 7.0..=9.0]));
+//! assert!(set.contains(FiniteF32::new(4.0)));
+//! assert!(!set.contains(FiniteF32::new(6.0)));
+//!```
 
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
@@ -35,27 +52,27 @@ pub type FiniteF128 = Finite<f128>;
 /// Construct a [`FiniteF64`] from an `f64`. Shorthand for [`FiniteF64::new`]
 #[must_use]
 pub fn ff64(x: f64) -> FiniteF64 {
-    Finite::<f64>::new(x)
+    FiniteF64::new(x)
 }
 
 /// Construct a [`FiniteF32`] from an `f32`. Shorthand for [`FiniteF32::new`]
 #[must_use]
 pub fn ff32(x: f32) -> FiniteF32 {
-    Finite::<f32>::new(x)
+    FiniteF32::new(x)
 }
 
-/// Construct a [`FiniteF16`] from an `f16`. Shorthand for [`Finite::<f16>::new`]
+/// Construct a [`FiniteF16`] from an `f16`. Shorthand for [`FiniteF16::new`]
 #[cfg(feature = "total_float_nightly_experimental")]
 #[must_use]
 pub fn ff16(x: f16) -> FiniteF16 {
-    Finite::<f16>::new(x)
+    FiniteF16::new(x)
 }
 
-/// Construct a [`FiniteF128`] from an `f128`. Shorthand for [`Finite::<f128>::new`]
+/// Construct a [`FiniteF128`] from an `f128`. Shorthand for [`FiniteF128::new`]
 #[cfg(feature = "total_float_nightly_experimental")]
 #[must_use]
 pub fn ff128(x: f128) -> FiniteF128 {
-    Finite::<f128>::new(x)
+    FiniteF128::new(x)
 }
 
 /// Experimental: A transparent wrapper around [`f64`] and friends with total ordering.
@@ -290,9 +307,11 @@ impl<T: FiniteFloat> Finite<T> {
     /// Convenience method to convert an inclusive primitive range into an inclusive [`Finite`] range.
     /// # Examples
     /// ```
-    /// use range_set_blaze::FiniteF64;
+    /// use range_set_blaze::{RangeSetBlaze, FiniteF64};
     ///
-    /// assert_eq!(FiniteF64::range(42.0..=47.0), FiniteF64::new(42.0)..=FiniteF64::new(47.0))
+    /// let short = RangeSetBlaze::from(FiniteF64::range(3.0..=5.0));
+    /// let long = RangeSetBlaze::from(FiniteF64::new(3.0)..=FiniteF64::new(5.0));
+    /// assert_eq!(short, long);
     #[must_use]
     pub fn range(range: RangeInclusive<T::Primitive>) -> RangeInclusive<Self> {
         let (start, end) = range.into_inner();

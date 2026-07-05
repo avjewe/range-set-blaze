@@ -2,7 +2,24 @@
 //!
 //! Ordering and other semantics are as per `total_cmp`.\
 //! Every distinct bit pattern is a separate valid value, even though quite a few of them are NaN.\
-//! For example, in a `Total<f32>` all 16 million different NAN values are distinct from each other.
+//! For example, in a `TotalF32` all 16 million different NAN values are distinct from each other.
+//!
+//! Enable with `total_float_experimental` (stable, `TotalF32`/`TotalF64`) and
+//! `total_float_nightly_experimental` (nightly, adds `TotalF16`/`TotalF128`).
+//!```
+//! use range_set_blaze::{RangeSetBlaze, TotalF64, TotalF32};
+//! let set = RangeSetBlaze::from_iter([TotalF64::new(3.0)..=TotalF64::new(5.0)]);
+//! assert!(set.contains(TotalF64::new(3.1)));
+//! assert!(!set.contains(TotalF64::new(2.9)));
+//!
+//! let set = RangeSetBlaze::from(TotalF64::range(3.0..=5.0));
+//! assert!(set.contains(TotalF64::new(4.9)));
+//! assert!(!set.contains(TotalF64::new(5.1)));
+//!
+//! let set = RangeSetBlaze::from_iter(TotalF32::ranges([3.0..=5.0, 7.0..=9.0]));
+//! assert!(set.contains(TotalF32::new(4.0)));
+//! assert!(!set.contains(TotalF32::new(6.0)));
+//!```
 
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
@@ -31,27 +48,27 @@ pub type TotalF128 = Total<f128>;
 /// Construct a [`TotalF64`] from an `f64`. Shorthand for [`TotalF64::new`]
 #[must_use]
 pub const fn tf64(x: f64) -> TotalF64 {
-    Total::<f64>::new(x)
+    TotalF64::new(x)
 }
 
 /// Construct a [`TotalF32`] from an `f32`. Shorthand for [`TotalF32::new`]
 #[must_use]
 pub const fn tf32(x: f32) -> TotalF32 {
-    Total::<f32>::new(x)
+    TotalF32::new(x)
 }
 
-/// Construct a [`TotalF16`] from an `f16`. Shorthand for [`Total::<f16>::new`]
+/// Construct a [`TotalF16`] from an `f16`. Shorthand for [`TotalF16::new`]
 #[cfg(feature = "total_float_nightly_experimental")]
 #[must_use]
 pub const fn tf16(x: f16) -> TotalF16 {
-    Total::<f16>::new(x)
+    TotalF16::new(x)
 }
 
-/// Construct a [`TotalF128`] from an `f128`. Shorthand for [`Total::<f128>::new`]
+/// Construct a [`TotalF128`] from an `f128`. Shorthand for [`TotalF128::new`]
 #[cfg(feature = "total_float_nightly_experimental")]
 #[must_use]
 pub const fn tf128(x: f128) -> TotalF128 {
-    Total::<f128>::new(x)
+    TotalF128::new(x)
 }
 
 /// Experimental: A transparent wrapper around floating point values with total ordering.
@@ -256,9 +273,11 @@ impl<T: TotalFloat> Total<T> {
     /// Convenience method to convert an inclusive primitive range into an inclusive [`Total`] range.
     /// # Examples
     /// ```
-    /// use range_set_blaze::TotalF64;
+    /// use range_set_blaze::{RangeSetBlaze, TotalF64};
     ///
-    /// assert_eq!(TotalF64::range(42.0..=47.0), TotalF64::new(42.0)..=TotalF64::new(47.0))
+    /// let short = RangeSetBlaze::from(TotalF64::range(3.0..=5.0));
+    /// let long = RangeSetBlaze::from(TotalF64::new(3.0)..=TotalF64::new(5.0));
+    /// assert_eq!(short, long);
     #[must_use]
     pub fn range(range: RangeInclusive<T::Primitive>) -> RangeInclusive<Self> {
         let (start, end) = range.into_inner();
