@@ -173,7 +173,16 @@ impl<T: TotalFloat> Total<T> {
 
     /// Returns the next float in total order.
     ///
-    /// Panics on overflow if `self` is the maximum value in total order.
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// assert_eq!(TotalF64::new(42.0).next().prev().into_inner(), 42.0);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics on overflow if `self` is the maximum value.
     #[must_use]
     pub fn next(self) -> Self {
         debug_assert!(self != Self::MAX, "next() called on maximum value");
@@ -183,7 +192,16 @@ impl<T: TotalFloat> Total<T> {
 
     /// Returns the previous float in total order.
     ///
-    /// Panics on overflow if `self` is the minimum value in total order.
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// assert_eq!(TotalF64::new(42.0).prev().next().into_inner(), 42.0);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics on underflow if `self` is the minimum value.
     #[must_use]
     pub fn prev(self) -> Self {
         debug_assert!(self != Self::MIN, "prev() called on minimum value");
@@ -191,9 +209,19 @@ impl<T: TotalFloat> Total<T> {
         Self::from_ordered(ordered.wrapping_sub(&T::Ordered::one()))
     }
 
-    /// Returns the next float in total order.
+    /// Returns the next float.
     ///
-    /// Returns [`None`] if `self` is the maximum value in total order.
+    /// Returns [`None`] if `self` is the maximum value.
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// let value = TotalF64::new(42.0);
+    /// assert_eq!(value.checked_next(), Some(value.next()));
+    /// let value = TotalF64::MAX;
+    /// assert_eq!(value.checked_next(), None);
+    /// ```
     #[must_use]
     pub fn checked_next(self) -> Option<Self> {
         if self == Self::MAX {
@@ -203,9 +231,19 @@ impl<T: TotalFloat> Total<T> {
         }
     }
 
-    /// Returns the previous float in total order.
+    /// Returns the previous float.
     ///
-    /// Returns [`None`] if `self` is the minimum value in total order.
+    /// Returns [`None`] if `self` is the minimum value.
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// let value = TotalF64::new(42.0);
+    /// assert_eq!(value.checked_prev(), Some(value.prev()));
+    /// let value = TotalF64::MIN;
+    /// assert_eq!(value.checked_prev(), None);
+    /// ```
     #[must_use]
     pub fn checked_prev(self) -> Option<Self> {
         if self == Self::MIN {
@@ -215,14 +253,26 @@ impl<T: TotalFloat> Total<T> {
         }
     }
 
-    /// Converts an inclusive primitive range into an inclusive [`Total`] range.
+    /// Convenience method to convert an inclusive primitive range into an inclusive [`Total`] range.
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    ///
+    /// assert_eq!(TotalF64::range(42.0..=47.0), TotalF64::new(42.0)..=TotalF64::new(47.0))
     #[must_use]
     pub fn range(range: RangeInclusive<T::Primitive>) -> RangeInclusive<Self> {
         let (start, end) = range.into_inner();
         Self(start)..=Self(end)
     }
 
-    /// Converts inclusive primitive ranges into inclusive [`Total`] ranges.
+    /// Convenience method to convert inclusive primitive ranges into inclusive [`Total`] ranges.
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::{RangeSetBlaze, TotalF64};
+    ///
+    /// let short = RangeSetBlaze::from_iter(TotalF64::ranges([1.0..=2.0, 3.0..=4.0]));
+    /// let long = RangeSetBlaze::from_iter([TotalF64::new(1.0)..=TotalF64::new(2.0), TotalF64::new(3.0)..=TotalF64::new(4.0)]);
+    /// assert_eq!(short, long);
     pub fn ranges<I>(ranges: I) -> impl Iterator<Item = RangeInclusive<Self>>
     where
         I: IntoIterator<Item = RangeInclusive<T::Primitive>>,
@@ -230,7 +280,14 @@ impl<T: TotalFloat> Total<T> {
         ranges.into_iter().map(Self::range)
     }
 
-    /// Converts primitive values into ordered [`Total`] values.
+    /// Convenience method to convert primitive values into ordered [`Total`] values.
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::{RangeSetBlaze, TotalF64};
+    ///
+    /// let short = RangeSetBlaze::from_iter(TotalF64::values([1.0, 2.0, 3.0, 4.0]));
+    /// let long = RangeSetBlaze::from_iter([TotalF64::new(1.0), TotalF64::new(2.0), TotalF64::new(3.0), TotalF64::new(4.0)]);
+    /// assert_eq!(short, long);
     pub fn values<I>(values: I) -> impl Iterator<Item = Self>
     where
         I: IntoIterator<Item = T::Primitive>,
@@ -241,6 +298,13 @@ impl<T: TotalFloat> Total<T> {
     /// Views primitive values as ordered [`Total`] values.
     ///
     /// This runs in `O(1)` and does not allocate.
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::{RangeSetBlaze, TotalF64};
+    ///
+    /// let short = RangeSetBlaze::from_iter(TotalF64::slice(&[1.0, 2.0, 3.0, 4.0]));
+    /// let long = RangeSetBlaze::from_iter([TotalF64::new(1.0), TotalF64::new(2.0), TotalF64::new(3.0), TotalF64::new(4.0)]);
+    /// assert_eq!(short, long);
     #[must_use]
     pub const fn slice(values: &[T::Primitive]) -> &[Self] {
         // SAFETY: Total is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
@@ -249,14 +313,20 @@ impl<T: TotalFloat> Total<T> {
     }
 }
 
-/// Views  [`Total`] values as primitive values.
+/// View [`Total`] values as primitive values.
 ///
 /// This runs in `O(1)` and does not allocate.
+/// # Examples
+/// ```
+/// use range_set_blaze::TotalF64;
+/// use range_set_blaze::total;
+///
+/// assert_eq!(&[1.0, 2.0, 3.0], total::primitive_slice(&[TotalF64::new(1.0), TotalF64::new(2.0), TotalF64::new(3.0)]))
 #[must_use]
-pub const fn primitive_slice<T: TotalFloat>(values: &[T]) -> &[T::Primitive] {
+pub const fn primitive_slice<T: TotalFloat>(values: &[Total<T>]) -> &[T::Primitive] {
     // SAFETY: TotalFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
     // and `&[TotalFloat]` entirely interchangeable in layout and lifetimes.
-    unsafe { core::mem::transmute::<&[T], &[T::Primitive]>(values) }
+    unsafe { core::mem::transmute::<&[Total<T>], &[T::Primitive]>(values) }
 }
 
 impl<T: TotalFloat> PartialEq for Total<T> {
