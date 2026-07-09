@@ -31,6 +31,10 @@ members = [
 
 [lib]
 
+[[example]]
+name = "float_maps"
+required-features = ["total_float_nightly_experimental"]
+
 [features]
 default = ["std"]
 std = ["itertools/use_std", "num-traits/std", "num-integer/std"]
