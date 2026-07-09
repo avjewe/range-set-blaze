@@ -7,45 +7,57 @@
 //! `TARGET_ERROR` (1e-7), and tabulates the results in a
 //! `RangeMapBlaze<FiniteF32, u8>`.
 //!
-//! Surprisingly, most representable `f32` values need only one term (`1`) or
-//! two terms (`1 - x*x/2`). The resulting `RangeMapBlaze` acts as a compact
-//! dispatch table: a lookup tells you how many Taylor terms to evaluate for
-//! each input range. Averaged uniformly over representable `f32` values in
-//! `[-pi, pi]`, only about 1.2 terms are needed.
+//! Surprisingly, most representable `f32` values in this interval need only
+//! one term (`1`) or two terms (`1 - x*x/2`). The resulting `RangeMapBlaze`
+//! acts as a compact dispatch table: a lookup tells you how many Taylor terms to
+//! evaluate for each input range. Averaged uniformly over representable `f32`
+//! values in `[-pi, pi]`, only about 1.2 terms are needed.
 //!
 //! Real math libraries go even further. They first reduce the input to a
 //! smaller interval (using cosine's periodicity and symmetry) and then use
 //! carefully optimized minimax polynomials rather than a Taylor series.
 //! This example intentionally uses the simpler Taylor series so the focus
-//! remains on how `RangeMapBlaze` can discover and represent an optimal
+//! remains on how `RangeMapBlaze` can discover and represent an compact
 //! dispatch table.
 
 use core::f32::consts::PI;
 use range_set_blaze::{FiniteF32, Integer, RangeMapBlaze, RangeSetBlaze, finite::ff32};
 use rayon::prelude::*;
-use std::thread::available_parallelism;
+use std::{ops::BitOr, thread::available_parallelism};
 use thousands::Separable;
 
+const TARGET_ERROR: f64 = 1e-7;
+
+/// Expected output:
+///
+/// ```text
+///      Running `target/release/examples/float_maps`
+/// Taylor-series terms needed for cos(x) to guarantee an error under one f32 epsilon, for f32 in [-pi, pi]:
+/// (target absolute error: 0.0000001; taylor/std may still disagree in the last printed digit -- display-rounding, not a bug)
+///   [  -3.1415927e0,   -3.0849006e0] -> 10 term(s)  (cos(mid): taylor=-0.9995982, std=-0.9995983)
+///   [  -3.0849004e0,   -2.4833546e0] -> 9 term(s)  (cos(mid): taylor=-0.9367867, std=-0.9367868)
+///   [  -2.4833543e0,   -1.9118674e0] -> 8 term(s)  (cos(mid): taylor=-0.5865679, std=-0.5865678)
+///   [  -1.9118673e0,   -1.3804736e0] -> 7 term(s)  (cos(mid): taylor=-0.0753027, std=-0.0753027)
+///   [  -1.3804735e0,   -9.036002e-1] -> 6 term(s)  (cos(mid): taylor=0.4157428, std=0.4157428)
+///   [ -9.0360016e-1,  -5.0198424e-1] -> 5 term(s)  (cos(mid): taylor=0.7630404, std=0.7630404)
+///   [  -5.019842e-1,   -2.039649e-1] -> 4 term(s)  (cos(mid): taylor=0.9383486, std=0.9383486)
+///   [ -2.0396489e-1,  -3.9359797e-2] -> 3 term(s)  (cos(mid): taylor=0.9926082, std=0.9926082)
+///   [ -3.9359793e-2,  -4.4721362e-4] -> 2 term(s)  (cos(mid): taylor=0.9998019, std=0.9998019)
+///   [  -4.472136e-4,    4.472136e-4] -> 1 term(s)  (cos(mid): taylor=1.0000000, std=1.0000000)
+///   [  4.4721362e-4,   3.9359793e-2] -> 2 term(s)  (cos(mid): taylor=0.9998019, std=0.9998019)
+///   [  3.9359797e-2,   2.0396489e-1] -> 3 term(s)  (cos(mid): taylor=0.9926082, std=0.9926082)
+///   [   2.039649e-1,    5.019842e-1] -> 4 term(s)  (cos(mid): taylor=0.9383486, std=0.9383486)
+///   [  5.0198424e-1,   9.0360016e-1] -> 5 term(s)  (cos(mid): taylor=0.7630404, std=0.7630404)
+///   [   9.036002e-1,    1.3804735e0] -> 6 term(s)  (cos(mid): taylor=0.4157428, std=0.4157428)
+///   [   1.3804736e0,    1.9118673e0] -> 7 term(s)  (cos(mid): taylor=-0.0753027, std=-0.0753027)
+///   [   1.9118674e0,    2.4833543e0] -> 8 term(s)  (cos(mid): taylor=-0.5865679, std=-0.5865678)
+///   [   2.4833546e0,    3.0849004e0] -> 9 term(s)  (cos(mid): taylor=-0.9367867, std=-0.9367868)
+///   [   3.0849006e0,     3.141589e0] -> 10 term(s)  (cos(mid): taylor=-0.9995983, std=-0.9995982)
+///
+/// 19 disjoint ranges cover all 2_157_060_007 in-scope f32 values.
+/// Mean terms per in-scope f32 value (each value weighted equally): 1.23
+/// ```
 fn main() {
-    /// Target absolute error; can leave `taylor`/`std` disagreeing in the last printed digit (display-rounding, not a bug).
-    const TARGET_ERROR: f64 = 1e-7;
-
-    /// Smallest `N` (1..=`u8::MAX`) for which the remainder bound
-    /// `|x|^(2N) / (2N)!` guarantees error under `TARGET_ERROR`. Assumes `x`
-    /// is already in scope.
-    fn terms_needed(x: FiniteF32) -> u8 {
-        let x = f64::from(x.into_inner());
-        let xx = x * x;
-        let mut term_magnitude = 1.0_f64; // |x|^0 / 0!
-        for n in 1..=u8::MAX {
-            term_magnitude *= xx / f64::from(2 * u32::from(n) * (2 * u32::from(n) - 1));
-            if term_magnitude <= TARGET_ERROR || n == u8::MAX {
-                return n;
-            }
-        }
-        unreachable!("loop always returns once n reaches u8::MAX")
-    }
-
     let scope = RangeSetBlaze::from_iter([ff32(-PI)..=ff32(PI)]);
 
     // Split scope across all available cores; each thread sweeps its own
@@ -55,10 +67,11 @@ fn main() {
     let term_map: RangeMapBlaze<FiniteF32, u8> = chunks(&scope, num_chunks)
         .into_par_iter()
         .map(|chunk| chunk.iter().map(|x| (x, terms_needed(x))).collect())
-        .reduce(RangeMapBlaze::new, |a, b| a | b);
+        .reduce(RangeMapBlaze::new, BitOr::bitor); // `bitor` is a very efficient union that exploits ownership.
 
     println!(
-        "Taylor-series terms needed for cos(x) to guarantee an error under one f32 epsilon, for f32 in [-pi, pi]:"
+        "Taylor-series terms needed for cos(x) to guarantee an error under one f32 epsilon, for f32 in [-pi, pi]:\n\
+         (target absolute error: {TARGET_ERROR}; taylor/std may still disagree in the last printed digit -- display-rounding, not a bug)"
     );
     for (range, n) in term_map.range_values() {
         let (start, end) = (range.start().into_inner(), range.end().into_inner());
@@ -80,20 +93,36 @@ fn main() {
     );
 }
 
-/// Splits `scope` (a single contiguous range) into `n` (or fewer, if `scope`
-/// is smaller) contiguous, non-overlapping `RangeSetBlaze`s of nearly-equal
-/// `safe_len`, any remainder spread one-per-chunk over the first chunks.
+/// Smallest `N` (1..=`u8::MAX`) for which the remainder bound
+/// `|x|^(2N) / (2N)!` guarantees error under `TARGET_ERROR`. Assumes `x`
+/// is already in scope.
+fn terms_needed(x: FiniteF32) -> u8 {
+    let x = f64::from(x.into_inner());
+    let xx = x * x;
+    let mut term_magnitude = 1.0_f64; // |x|^0 / 0!
+    for n in 1..=u8::MAX {
+        term_magnitude *= xx / f64::from(2 * u32::from(n) * (2 * u32::from(n) - 1));
+        if term_magnitude <= TARGET_ERROR {
+            return n;
+        }
+    }
+    panic!("u8::MAX terms not enough for x={x}")
+}
+
+/// Splits `scope` into `n` nearly equal contiguous chunks.
 fn chunks(scope: &RangeSetBlaze<FiniteF32>, n: usize) -> Vec<RangeSetBlaze<FiniteF32>> {
+    let Some(mut start) = scope.first() else {
+        return Vec::new();
+    };
     let n = (n as u32).clamp(1, scope.len());
     let (base_len, remainder) = (scope.len() / n, scope.len() % n);
 
-    let mut start = scope.first().expect("scope is non-empty");
     (0..n)
         .map(|i| {
             let len = base_len + u32::from(i < remainder);
-            let end = start.inclusive_end_from_start(len);
+            let end = start.inclusive_end_from_start(len - 1);
             let chunk = RangeSetBlaze::from_iter([start..=end]);
-            start = end.checked_next().unwrap_or(end); // unused after the last chunk
+            start = end.next();
             chunk
         })
         .collect()

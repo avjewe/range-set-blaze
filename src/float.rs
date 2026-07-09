@@ -22,6 +22,17 @@
 //! assert!(set.contains(TotalF32::new(4.0)));
 //! assert!(!set.contains(TotalF32::new(6.0)));
 //!```
+//!
+//! ## Full worked example
+//!
+//! `examples/float_maps.rs` builds a `RangeMapBlaze<FiniteF32, u8>` dispatch table by sweeping
+//! every finite `f32` in `[-pi, pi]`, computing how many Taylor-series terms `cos(x)` needs at
+//! each point. Its full source (kept in sync automatically via `include_str!`) is below.
+#![doc = concat!(
+    "````rust,no_run\n",
+    include_str!("../examples/float_maps.rs"),
+    "\n````"
+)]
 
 #[doc(hidden)]
 pub mod finite_float;

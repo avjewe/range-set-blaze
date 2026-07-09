@@ -54,8 +54,10 @@ pre-commit: clippy
 # (excludes the nightly-only `total_float_nightly_experimental` feature, so
 # `f16`/`f128` wrappers do not appear). Keep this feature list in sync with
 # `[package.metadata.docs.rs]` in Cargo.toml.
+# Uses `cargo +nightly` because docs.rs itself always builds with nightly --
+# `from_slice`'s `feature(portable_simd)` won't compile on stable otherwise.
 doc:
-    cargo doc --no-deps --open --features "std,rog_experimental,total_float_experimental,from_slice,test_util"
+    cargo +nightly doc --no-deps --open --features "std,rog_experimental,total_float_experimental,from_slice,test_util"
 
 # Check documentation for dead links (requires cargo-deadlinks)
 doc-links:
@@ -83,6 +85,10 @@ ci-full: clippy test-stable doc-links audit publish-dry-all
 # ============================================================================
 # Utilities
 # ============================================================================
+
+# Run the float_maps example in release mode (it's too slow in debug)
+run-float-maps:
+    cargo run --release --example float_maps --features total_float_experimental
 
 # Clean build artifacts
 clean:

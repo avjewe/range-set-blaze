@@ -73,6 +73,12 @@ Do not create `mod.rs` files. This repo already follows the `src/foo.rs` + `src/
 pattern throughout (e.g. `src/float.rs` + `src/float/finite.rs`); keep new modules consistent
 with it.
 
+## Code Organization
+
+- In binaries and examples, `main` should be the first function in the file, with helper
+  functions defined below it. This isn't Pascal — readers want the entry point first, not
+  buried after its helpers.
+
 ## Comment and TODO Conventions
 
 - Plain `TODO` means non-blocking/future work.
