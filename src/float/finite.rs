@@ -31,6 +31,10 @@ use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 #[cfg(feature = "from_slice")]
 use crate::RangeSetBlaze;
 
+// TODO000 This crate's public API should not return `Result` (see AGENTS.md, "Error Handling").
+// This `Error` enum has exactly one variant, so it's a plain yes/no condition — consider
+// replacing `Finite::try_new`'s `Result<Self, Error>` with `Option<Self>` and dropping this
+// enum, unless a `TryFrom`/`TryInto` impl truly requires the `Result` shape.
 /// Error type, only used for [`TryFrom`] implementations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
