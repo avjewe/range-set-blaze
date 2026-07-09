@@ -137,6 +137,12 @@ pub trait Integer: Copy + PartialEq + PartialOrd + Ord + fmt::Debug + Send + Syn
     ///
     /// assert_eq!(u8::safe_len(&(0..=255)), 256);
     /// ```
+    ///
+    /// # Precondition
+    /// `range.start() <= range.end()`. This is checked with `debug_assert!` and is *not*
+    /// checked in release builds, where violating it produces an unspecified (nonsense,
+    /// but not unsafe) result rather than a panic. Callers are expected to only ever pass
+    /// already-valid ranges.
     fn safe_len(range: &RangeInclusive<Self>) -> <Self as Integer>::SafeLen;
 
     // FUTURE define .len() SortedDisjoint
@@ -148,10 +154,22 @@ pub trait Integer: Copy + PartialEq + PartialOrd + Ord + fmt::Debug + Send + Syn
     fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64;
 
     /// Computes `self + (b - 1)` where `b` is of type [`Integer::SafeLen`].
+    ///
+    /// # Precondition
+    /// `b` must be small enough that `self + (b - 1)` does not overflow `Self`. This is
+    /// checked with `debug_assert!` and is *not* checked in release builds, where violating
+    /// it produces an unspecified (nonsense, but not unsafe) result rather than a panic.
+    /// Callers are expected to only ever pass a `b` that satisfies this.
     #[must_use]
     fn inclusive_end_from_start(self, b: Self::SafeLen) -> Self;
 
     /// Computes `self - (b - 1)` where `b` is of type [`Integer::SafeLen`].
+    ///
+    /// # Precondition
+    /// `b` must be small enough that `self - (b - 1)` does not underflow `Self`. This is
+    /// checked with `debug_assert!` and is *not* checked in release builds, where violating
+    /// it produces an unspecified (nonsense, but not unsafe) result rather than a panic.
+    /// Callers are expected to only ever pass a `b` that satisfies this.
     #[must_use]
     fn start_from_inclusive_end(self, b: Self::SafeLen) -> Self;
 }

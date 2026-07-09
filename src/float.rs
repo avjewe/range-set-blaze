@@ -23,7 +23,9 @@
 //! assert!(!set.contains(TotalF32::new(6.0)));
 //!```
 
+#[doc(hidden)]
 pub mod finite_float;
+#[doc(hidden)]
 pub mod total_float;
 
 pub mod total;

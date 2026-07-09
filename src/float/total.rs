@@ -142,12 +142,24 @@ impl<T: TotalFloat> Total<T> {
     }
 
     /// Computes `self + (b - 1)` where `b` is of type `SafeLen`.
+    ///
+    /// # Precondition
+    /// `b` must be small enough that the result stays within range for `T`. This is
+    /// checked with `debug_assert!` and is *not* checked in release builds, where
+    /// violating it produces an unspecified (nonsense, but not unsafe) result rather
+    /// than a panic. Callers are expected to only ever pass a `b` that satisfies this.
     #[must_use]
     pub fn inclusive_end_from_start(self, b: T::SafeLen) -> Self {
         Self(T::inclusive_end_from_start(self.0, b))
     }
 
     /// Computes `self - (b - 1)` where `b` is of type `SafeLen`.
+    ///
+    /// # Precondition
+    /// `b` must be small enough that the result stays within range for `T`. This is
+    /// checked with `debug_assert!` and is *not* checked in release builds, where
+    /// violating it produces an unspecified (nonsense, but not unsafe) result rather
+    /// than a panic. Callers are expected to only ever pass a `b` that satisfies this.
     #[must_use]
     pub fn start_from_inclusive_end(self, b: T::SafeLen) -> Self {
         Self(T::start_from_inclusive_end(self.0, b))

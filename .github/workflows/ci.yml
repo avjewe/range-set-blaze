@@ -1,4 +1,4 @@
-name: test
+Whatname: test
 
 on:
   push:
@@ -120,3 +120,17 @@ jobs:
           cargo run
           cd ../..
           rustup override set stable
+
+  test_msrv:
+    name: Test MSRV (1.87)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Rust 1.87
+        uses: dtolnay/rust-toolchain@1.87
+      - name: Check MSRV compiles
+        run: |
+          cargo check --verbose
+          cargo check --verbose --no-default-features --features "rog_experimental"
+          cargo check --verbose --features "std total_float_experimental"

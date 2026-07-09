@@ -168,12 +168,24 @@ impl<T: FiniteFloat> Finite<T> {
     }
 
     /// Computes `self + (b - 1)` where `b` is of type `SafeLen`.
+    ///
+    /// # Precondition
+    /// `b` must be small enough that the result stays within range for `T`. This is
+    /// checked with `debug_assert!` and is *not* checked in release builds, where
+    /// violating it produces an unspecified (nonsense, but not unsafe) result rather
+    /// than a panic. Callers are expected to only ever pass a `b` that satisfies this.
     #[must_use]
     pub fn inclusive_end_from_start(self, b: T::SafeLen) -> Self {
         Self(T::inclusive_end_from_start(self.0, b))
     }
 
     /// Computes `self - (b - 1)` where `b` is of type `SafeLen`.
+    ///
+    /// # Precondition
+    /// `b` must be small enough that the result stays within range for `T`. This is
+    /// checked with `debug_assert!` and is *not* checked in release builds, where
+    /// violating it produces an unspecified (nonsense, but not unsafe) result rather
+    /// than a panic. Callers are expected to only ever pass a `b` that satisfies this.
     #[must_use]
     pub fn start_from_inclusive_end(self, b: T::SafeLen) -> Self {
         Self(T::start_from_inclusive_end(self.0, b))
@@ -226,6 +238,10 @@ impl<T: FiniteFloat> Finite<T> {
     /// # Panics
     ///
     /// Panics on overflow if `self` is the maximum value.
+    // TODO00: rust-version is now "1.87", so f32/f64::next_up() (stable since
+    // 1.86) is available. Consider delegating to T::Primitive::next_up() here
+    // instead of the manual to_ordered/wrapping_add/from_ordered round-trip
+    // (still need the -0.0 skip check, just phrased on the primitive value).
     #[must_use]
     pub fn next(self) -> Self {
         debug_assert!(self != Self::MAX, "next() called on maximum value");
@@ -249,6 +265,11 @@ impl<T: FiniteFloat> Finite<T> {
     /// # Panics
     ///
     /// Panics on underflow if `self` is the minimum value.
+    // TODO00: rust-version is now "1.87", so f32/f64::next_down() (stable
+    // since 1.86) is available. Consider delegating to T::Primitive::
+    // next_down() here instead of the manual to_ordered/wrapping_sub/
+    // from_ordered round-trip (still need the -0.0 skip check, just phrased
+    // on the primitive value).
     #[must_use]
     pub fn prev(self) -> Self {
         debug_assert!(self != Self::MIN, "prev() called on minimum value");

@@ -76,7 +76,12 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
     fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64;
     /// Converts a `f64` to [`FiniteFloat::SafeLen`] using the formula `f as Self::SafeLen`. For large integer types, this will result in a loss of precision.
     fn f64_to_safe_len_lossy(f: f64) -> Self::SafeLen;
-    /// return (x - 1) as `Self::Ordered`. `x` must not be zero.
+    /// Returns `(x - 1)` as `Self::Ordered`.
+    ///
+    /// # Precondition
+    /// `x` must not be zero, or `x - 1` underflows. This is checked with
+    /// `debug_assert!` and is *not* checked in release builds, where violating it
+    /// silently wraps to a nonsense (but not unsafe) result.
     fn safe_as_ordered(x: Self::SafeLen) -> Self::Ordered;
     /// Returns the ordering between `x` and `y`, as per the standard library's `f64::total_cmp`.
     fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering;
@@ -172,6 +177,7 @@ macro_rules! impl_finite_ops {
 
         #[expect(clippy::cast_possible_wrap)]
         fn safe_as_ordered(x: Self::SafeLen) -> Self::Ordered {
+            debug_assert!(!x.is_zero(), "x must not be zero");
             (x - 1) as Self::Ordered
         }
 

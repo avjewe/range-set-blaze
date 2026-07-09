@@ -2,6 +2,8 @@
 
 #![cfg(test)]
 #![cfg(feature = "total_float_experimental")]
+#![cfg_attr(feature = "total_float_nightly_experimental", feature(f16))]
+#![cfg_attr(feature = "total_float_nightly_experimental", feature(f128))]
 
 use num_traits::identities::One;
 #[cfg(feature = "total_float_nightly_experimental")]
@@ -18,11 +20,14 @@ use range_set_blaze::{
     FiniteF32, FiniteF64, Integer, RangeMapBlaze, RangeSetBlaze, TotalF32, TotalF64,
 };
 use syntactic_for::syntactic_for;
+use wasm_bindgen_test::*;
+wasm_bindgen_test_configure!(run_in_browser);
 
 #[cfg(feature = "total_float_nightly_experimental")]
 const BIG_ZERO: UIntPlusOne<u128> = UIntPlusOne::<u128>::UInt(0);
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn map_complement0() {
     assert!(0.0 == -0.0);
     assert_eq!(0.0, -0.0);
@@ -61,6 +66,7 @@ fn map_complement0() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn map_complement0_nightly() {
     assert_ne!(tf16(0.0), tf16(-0.0));
@@ -98,6 +104,7 @@ fn map_complement0_nightly() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn set_complement0() {
     let empty = RangeSetBlaze::<TotalF64>::new();
     assert_eq!(empty.len(), 0);
@@ -129,6 +136,7 @@ fn set_complement0() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn set_complement_nightly() {
     let empty = RangeSetBlaze::<TotalF128>::new();
@@ -161,6 +169,7 @@ fn set_complement_nightly() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[allow(clippy::cognitive_complexity, clippy::float_cmp)]
 fn integer_coverage() {
     syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
@@ -177,6 +186,7 @@ fn integer_coverage() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 #[allow(clippy::cognitive_complexity, clippy::float_cmp)]
 fn integer_coverage_nightly() {
@@ -194,6 +204,7 @@ fn integer_coverage_nightly() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 // I don't quite understand why clippy complains here
 #[expect(clippy::from_iter_instead_of_collect)]
 fn float_test() {
@@ -247,6 +258,7 @@ fn float_test() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_inclusive() {
     syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
         $(
@@ -260,6 +272,7 @@ fn test_inclusive() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn test_inclusive_nightly() {
     syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
@@ -274,6 +287,7 @@ fn test_inclusive_nightly() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_floats2() {
     syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
         $(
@@ -289,6 +303,7 @@ fn test_floats2() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn test_floats2_nightly() {
     syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
@@ -305,6 +320,7 @@ fn test_floats2_nightly() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_floats() {
     let mut a = TotalF32::range(0.0..=0.0);
     assert_eq!(TotalF32::range_next_back(&mut a), Some(tf32(0.0)));
@@ -324,6 +340,7 @@ fn test_floats() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn test_floats_nightly() {
     let mut a = TotalF16::range(0.0..=0.0);
@@ -344,6 +361,7 @@ fn test_floats_nightly() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn total_iterators() {
     syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
         $(
@@ -375,6 +393,7 @@ fn total_iterators() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn total_iterators_nightly() {
     syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
@@ -407,6 +426,7 @@ fn total_iterators_nightly() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn total_complement() {
     syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
         $(
@@ -443,6 +463,7 @@ fn total_complement() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn total_complement_nightly() {
     // Total128::SafeLen is UIntPlusOne, which doesn't work smoothly here, so it's a separate test below
@@ -481,6 +502,7 @@ fn total_complement_nightly() {
 }
 
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn total_complement_total128() {
     let set = RangeSetBlaze::from_iter([TotalF128::MAX..=TotalF128::MAX]);
@@ -513,7 +535,183 @@ fn total_complement_total128() {
     assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(u128::MAX - 1));
 }
 
+// ============================================================================
+// KNOWN BUGS (TDD red step): the tests below currently FAIL. They document
+// real invariant violations, not test-writing mistakes. `FiniteF64`'s own doc
+// comment (see `FiniteF64` / `Finite<T>`) promises values "excluding NaN,
+// -0.0, and infinities," and `new()`/`try_new()` enforce that via
+// `T::is_finite` + `T::normalize`. But `range()`, `ranges()`, `values()`, and
+// `slice()` are convenience/zero-copy constructors that build `Self` directly
+// (or `transmute` for `slice()`), bypassing both the finiteness check and the
+// -0.0 normalization. Left as failing tests on purpose so this is visible in
+// CI until someone (author or reviewer) decides how to fix it.
+// ============================================================================
+
 #[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[should_panic(expected = "Finite type requires a finite value")]
+fn finite_range_rejects_nan_start() {
+    let _ = FiniteF64::range(f64::NAN..=1.0);
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[should_panic(expected = "Finite type requires a finite value")]
+fn finite_range_rejects_infinite_end() {
+    let _ = FiniteF64::range(1.0..=f64::INFINITY);
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[should_panic(expected = "Finite type requires a finite value")]
+fn finite_values_rejects_nan() {
+    // Important: values() is lazy, so force iteration.
+    let _ = FiniteF64::values([1.0, f64::NAN]).collect::<Vec<_>>();
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn finite_values_normalizes_negative_zero() {
+    let value = FiniteF64::values([-0.0]).next().unwrap();
+
+    assert_eq!(value, FiniteF64::new(0.0));
+    assert_eq!(value.into_inner().to_bits(), 0.0f64.to_bits());
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn finite_slice_can_create_invalid_finite_value() {
+    let values = FiniteF64::slice(&[f64::NAN]);
+
+    assert!(
+        !values[0].into_inner().is_nan(),
+        "safe FiniteF64::slice allowed a NaN-backed FiniteF64"
+    );
+}
+
+// The bypass logic in `range`/`values`/`slice` is shared generic code (one
+// impl block in `finite.rs`, monomorphized per type) — the tests above
+// already prove the bug there once. These f32/f128 variants aren't re-testing
+// that shared logic; they sanity-check that each type's own `FiniteFloat::
+// is_finite`/`normalize` leaf impl (which live separately per type in
+// `finite_float.rs`) behaves the same way once a fix routes through them.
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[should_panic(expected = "Finite type requires a finite value")]
+fn finite_range_rejects_nan_start_f32() {
+    let _ = FiniteF32::range(f32::NAN..=1.0);
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn finite_values_normalizes_negative_zero_f32() {
+    let value = FiniteF32::values([-0.0]).next().unwrap();
+
+    assert_eq!(value, FiniteF32::new(0.0));
+    assert_eq!(value.into_inner().to_bits(), 0.0f32.to_bits());
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn finite_slice_can_create_invalid_finite_value_f32() {
+    let values = FiniteF32::slice(&[f32::NAN]);
+
+    assert!(
+        !values[0].into_inner().is_nan(),
+        "safe FiniteF32::slice allowed a NaN-backed FiniteF32"
+    );
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(feature = "total_float_nightly_experimental")]
+#[should_panic(expected = "Finite type requires a finite value")]
+fn finite_range_rejects_nan_start_f128() {
+    let _ = FiniteF128::range(f128::NAN..=1.0);
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn finite_values_normalizes_negative_zero_f128() {
+    let value = FiniteF128::values([-0.0]).next().unwrap();
+
+    assert_eq!(value, FiniteF128::new(0.0));
+    assert_eq!(value.into_inner().to_bits(), 0.0f128.to_bits());
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn finite_slice_can_create_invalid_finite_value_f128() {
+    let values = FiniteF128::slice(&[f128::NAN]);
+
+    assert!(
+        !values[0].into_inner().is_nan(),
+        "safe FiniteF128::slice allowed a NaN-backed FiniteF128"
+    );
+}
+
+// ============================================================================
+// Why didn't the exhaustive `full_16` test above already catch this?
+//
+// `full_16` walks the *already-valid* total-order domain: it starts at
+// `$ty::MIN` (a finite extreme) and steps forward only via `.next()`, whose
+// own logic already knows to skip the -0.0 ordered slot and never produces
+// NaN. It exhaustively checks internal self-consistency of that walk
+// (safe_len, inclusive_end_from_start, next/prev symmetry) — it never routes
+// arbitrary/adversarial *input* bit patterns (NaN, -0.0, +/-infinity) through
+// the other public entry points (`values`, `range`, `slice`), which is
+// exactly where the bug lives. Below is the same exhaustive-over-all-bits
+// idea as `full_16`, but aimed at the constructors instead of the walk.
+// ============================================================================
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn finite_f16_exhaustive_bit_patterns_via_bypass_constructors() {
+    let mut failures = Vec::new();
+
+    for bits in 0..=u16::MAX {
+        let x = f16::from_bits(bits);
+
+        let via_values = FiniteF16::values([x]).next().unwrap();
+        if !via_values.into_inner().is_finite() {
+            failures.push(format!(
+                "values(): bits {bits:#06x} ({x}) produced non-finite FiniteF16"
+            ));
+        } else if via_values.into_inner() == 0.0 && via_values.into_inner().is_sign_negative() {
+            failures.push(format!(
+                "values(): bits {bits:#06x} produced -0.0-backed FiniteF16 (should normalize to +0.0)"
+            ));
+        }
+
+        let via_range = *FiniteF16::range(x..=x).start();
+        if !via_range.into_inner().is_finite() {
+            failures.push(format!(
+                "range(): bits {bits:#06x} ({x}) produced non-finite FiniteF16"
+            ));
+        }
+
+        let via_slice = FiniteF16::slice(core::slice::from_ref(&x))[0];
+        if !via_slice.into_inner().is_finite() {
+            failures.push(format!(
+                "slice(): bits {bits:#06x} ({x}) produced non-finite FiniteF16"
+            ));
+        }
+    }
+
+    assert!(
+        failures.is_empty(),
+        "{} invariant violations found across all 65536 f16 bit patterns; first 10:\n{}",
+        failures.len(),
+        failures[..failures.len().min(10)].join("\n")
+    );
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn full_16() {
     syntactic_for! { ty in [TotalF16,  FiniteF16] {
@@ -553,4 +751,69 @@ fn full_16() {
             }
         )*
     }}
+}
+
+// ============================================================================
+// KNOWN BUG (TDD red step): `Finite<T>`'s doc comment (see `Finite<T>` /
+// `FiniteF64` above) promises every value it holds is "excluding NaN, -0.0,
+// and infinities." `try_new`/`new` enforce that. But `from_ordered`
+// (`Finite::from_ordered` in `finite.rs`, backed by `FiniteFloat::
+// from_ordered` in `finite_float.rs`) is a *public*, infallible round-trip
+// helper that accepts an arbitrary `Ordered` value with no validation at
+// all -- not even a `debug_assert`. Any `Ordered` value outside
+// `MIN_ORDERED..=MAX_ORDERED`, or equal to the ordered slot for -0.0,
+// silently produces a `Finite` value wrapping NaN, +/-infinity, or -0.0.
+// Left failing on purpose, same as the `values`/`range`/`slice` bugs above,
+// until someone decides how to fix it (validate-and-panic, return a
+// `Result`, or document/rename to make the danger unmissable).
+// ============================================================================
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn finite_f16_exhaustive_from_ordered_rejects_out_of_domain() {
+    // Exhaustive: f16's `Ordered` type is `i16`, so there are only 65536
+    // possible inputs -- walk every single one and record every input that
+    // breaks `FiniteF16`'s finite/-0.0 invariant.
+    let mut failures = Vec::new();
+
+    for ordered in i16::MIN..=i16::MAX {
+        let value = FiniteF16::from_ordered(ordered);
+        let inner = value.into_inner();
+        let is_negative_zero = inner == 0.0 && inner.is_sign_negative();
+
+        if !inner.is_finite() || is_negative_zero {
+            failures.push(format!(
+                "from_ordered({ordered}) produced invalid FiniteF16 {inner:?} (finite: {}, is -0.0: {is_negative_zero})",
+                inner.is_finite()
+            ));
+        }
+    }
+
+    assert!(
+        failures.is_empty(),
+        "{} of 65536 ordered i16 values broke FiniteF16's finite/-0.0 invariant via from_ordered; first 10:\n{}",
+        failures.len(),
+        failures[..failures.len().min(10)].join("\n")
+    );
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn finite_f32_from_ordered_accepts_nan_ordered_bug() {
+    // Same bug as the f16 exhaustive test above, but a single concrete
+    // example for f32 (whose Ordered domain, i32, is too large to walk
+    // exhaustively here). `TotalF32` shares the exact same `Ordered`
+    // encoding as `FiniteF32` and has no finiteness restriction, so we can
+    // use it to manufacture "the Ordered position of f32::NAN" and feed it
+    // straight into `FiniteF32::from_ordered`.
+    let nan_ordered = TotalF32::new(f32::NAN).to_ordered();
+
+    let value = FiniteF32::from_ordered(nan_ordered);
+
+    assert!(
+        !value.into_inner().is_nan(),
+        "BUG: FiniteF32::from_ordered({nan_ordered}) produced a NaN-backed FiniteF32: {:?}",
+        value.into_inner()
+    );
 }

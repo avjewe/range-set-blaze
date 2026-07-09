@@ -97,17 +97,34 @@ fmt-check:
     cargo fmt --all -- --check
 
 # ============================================================================
+# MSRV (matches `rust-version` in Cargo.toml — run `rustup toolchain install 1.87` once)
+# ============================================================================
+
+# Check the crate still compiles on the declared MSRV (1.87)
+msrv-check:
+    cargo +1.87 check --verbose
+    cargo +1.87 check --verbose --no-default-features --features "rog_experimental"
+    cargo +1.87 check --verbose --features "std total_float_experimental"
+
+# ============================================================================
+# WASM (wasip1 via wasmtime — the browser/Chrome lane is CI-only)
+# ============================================================================
+
+# WASM tests via wasmtime/wasip1 (full test suite, not just wasm-bindgen-test); skips Chrome/browser lane, which is CI-only
+test-wasm:
+    rustup target add wasm32-wasip1
+    CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose
+    CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose --no-default-features --features "rog_experimental"
+    CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose --features "std total_float_experimental"
+
+# ============================================================================
 # SIMD Feature (from_slice) - Requires Nightly
 # ============================================================================
 
 # Build with from_slice feature
 build-simd:
-    rustup override set nightly
-    cargo build --features from_slice
-    rustup override set stable
+    cargo +nightly build --features from_slice
 
 # Test with from_slice feature
 test-simd:
-    rustup override set nightly
-    cargo test --features from_slice
-    rustup override set stable
+    cargo +nightly test --features from_slice
