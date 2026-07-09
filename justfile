@@ -7,8 +7,10 @@
 # Main Commands (use these most often)
 # ============================================================================
 
-# Check everything locally before pushing (recommended!)
-check-all: clippy test-stable test-nightly fmt-check
+# Check everything locally before pushing: delegates to `cargo check-all` (xtask)
+check-all:
+    cargo check-all
+    just fmt-check
 
 # Run all stable CI checks locally
 ci: clippy test-stable
@@ -29,13 +31,16 @@ test-stable:
     cargo test --verbose
     cargo test --verbose --release
     cargo test --verbose --no-default-features --features "rog_experimental"
+    cargo test --verbose --features "std total_float_experimental"
+    cargo test --verbose --features "std rog_experimental total_float_experimental"
+    cargo test --verbose --no-default-features --features "total_float_experimental"
 
 # Run nightly tests with from_slice feature
+# Uses `cargo +nightly` (not `rustup override set`) so this is safe to run
+# concurrently with stable steps in the same directory (see `cargo check-all`).
 test-nightly:
-    rustup override set nightly
-    cargo test --verbose --features "rog_experimental from_slice"
-    cargo test --verbose --all-features
-    rustup override set stable
+    cargo +nightly test --verbose --features "rog_experimental from_slice"
+    cargo +nightly test --verbose --all-features
 
 # Quick check before commit (clippy + basic tests)
 pre-commit: clippy

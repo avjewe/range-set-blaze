@@ -36,6 +36,8 @@ jobs:
           cargo test --verbose --release
           cargo test --verbose --no-default-features --features "rog_experimental"
           cargo test --verbose --features "std total_float_experimental"
+          cargo test --verbose --features "std rog_experimental total_float_experimental"
+          cargo test --verbose --no-default-features --features "total_float_experimental"
       - name: Test Rust Native (nightly)
         run: |
           rustup override set nightly
@@ -73,8 +75,9 @@ jobs:
       - name: run tests
         run: |
           rustup target add i686-unknown-linux-gnu
-          cargo test --target i686-unknown-linux-gnu --verbose 
+          cargo test --target i686-unknown-linux-gnu --verbose
           cargo test --target i686-unknown-linux-gnu --verbose --no-default-features --features "rog_experimental"
+          cargo test --target i686-unknown-linux-gnu --verbose --features "std total_float_experimental"
 
   test_wasm:
     name: Test WASM
@@ -91,6 +94,7 @@ jobs:
       - name: Test WASM/unknown
         run: |
           wasm-pack test --chrome --headless -- --no-default-features --verbose
+          wasm-pack test --chrome --headless -- --features "std total_float_experimental" --verbose
       - name: Install wasmtime
         uses: jcbhmr/setup-wasmtime@v2
       - name: Test WASM/wasip1
@@ -98,6 +102,7 @@ jobs:
           rustup target add wasm32-wasip1
           cargo test --target wasm32-wasip1 --verbose
           cargo test --target wasm32-wasip1 --verbose --no-default-features --features "rog_experimental"
+          cargo test --target wasm32-wasip1 --verbose --features "std total_float_experimental"
       - name: Setup and check Embedded
         run: |
           rustup target add thumbv7m-none-eabi
