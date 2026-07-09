@@ -1,7 +1,7 @@
 //! Example: approximate `cos` for `f16` with a plain Taylor series, and use
 //! an exhaustive sweep over every finite `f16` value -- there are only
 //! about 61,000 of them -- to discover how many series terms each one needs
-//! to guarantee an error under one `f32` ULP (`f32::EPSILON`), for the
+//! to guarantee an error under one `f32` epsilon (`f32::EPSILON`), for the
 //! values that matter: `x` in `scope` (see `main`).
 //!
 //! "ULP" stands for "unit in the last place": the gap between one
@@ -66,12 +66,13 @@ fn main() {
         .collect();
 
     println!(
-        "Taylor-series terms needed for cos(x) to guarantee 1 ULP accuracy, for f16 in [-pi, pi]:"
+        "Taylor-series terms needed for cos(x) to guarantee an error under one f32 epsilon, for f16 in [-pi, pi]:"
     );
     for (range, terms) in term_map.range_values() {
         let (start, end) = range.into_inner();
         let label = match terms {
             TermsNeeded::OutOfScope => "out of scope".to_string(),
+            TermsNeeded::Terms(n) if n.get() == 1 => "1 term".to_string(),
             TermsNeeded::Terms(n) => format!("{n} terms"),
         };
         println!(
@@ -86,8 +87,8 @@ fn main() {
         term_map.len()
     );
     println!(
-        "Expected terms for x ~ Uniform over the in-scope f16 values: {:.2}",
-        expected_terms(&term_map)
+        "Mean terms per in-scope f16 value (each value weighted equally): {:.2}",
+        mean_terms(&term_map)
     );
 }
 
@@ -125,12 +126,15 @@ fn terms_needed(x: FiniteF16, scope: &RangeSetBlaze<FiniteF16>) -> TermsNeeded {
     unreachable!("loop always returns once n reaches MAX_TERMS")
 }
 
-/// Expected Taylor term count for `x` drawn uniformly from the finite `f16`
-/// values that are in scope. Exact, not estimated: `term_map` already holds
-/// every in-scope value's term count, coalesced into a handful of ranges,
-/// so this just weights each range's term count by `Integer::safe_len` (its
-/// element count) and takes the weighted average -- no sampling needed.
-fn expected_terms(term_map: &RangeMapBlaze<FiniteF16, TermsNeeded>) -> f64 {
+/// Plain arithmetic mean of the term count across every in-scope `f16`
+/// value, each counted once -- not an average over the reals in `scope`'s
+/// bounds, which would weight every magnitude equally regardless of how
+/// many (or few) `f16` values actually live there. Exact, not estimated:
+/// `term_map` already holds every in-scope value's term count, coalesced
+/// into a handful of ranges, so this just weights each range's term count
+/// by `Integer::safe_len` (its element count) and takes the weighted
+/// average -- no sampling needed.
+fn mean_terms(term_map: &RangeMapBlaze<FiniteF16, TermsNeeded>) -> f64 {
     let mut weighted_sum = 0.0;
     let mut in_scope_count = 0.0;
     for (range, terms) in term_map.range_values() {
