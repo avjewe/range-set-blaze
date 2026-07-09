@@ -33,10 +33,6 @@ members = [
 
 [[example]]
 name = "float_maps"
-required-features = ["total_float_nightly_experimental"]
-
-[[example]]
-name = "float_map32"
 required-features = ["total_float_experimental"]
 
 [features]
@@ -63,6 +59,7 @@ wasm-bindgen-test = "0.3.76"
 rand = "0.9.4"
 range-set-blaze = { path = ".", features = ["test_util"] }
 anyhow = "1.0.103"
+rayon = "1.10"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 criterion = { version = "0.5.1", features = [

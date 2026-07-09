@@ -15,7 +15,10 @@ fn scratch7_from_ordered_bug() {
     let nan_ordered = TotalF32::new(f32::NAN).to_ordered();
     let broken = FiniteF32::from_ordered(nan_ordered);
     println!("FiniteF32::from_ordered({nan_ordered}) = {broken:?} -- supposed to be impossible!");
-    println!("  .into_inner().is_nan() = {}", broken.into_inner().is_nan());
+    println!(
+        "  .into_inner().is_nan() = {}",
+        broken.into_inner().is_nan()
+    );
 
     let neg_inf_ordered = TotalF32::new(f32::NEG_INFINITY).to_ordered();
     let broken_inf = FiniteF32::from_ordered(neg_inf_ordered);

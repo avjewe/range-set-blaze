@@ -1,64 +1,78 @@
-//! Example: the `f32` counterpart to `float_maps.rs`, which does the same
-//! Taylor-series term-count analysis for `f16`. There are ~4.28 billion
-//! finite `f32` values -- about 65,000 times as many as `f16`'s ~61,000 --
-//! but this version sweeps every single one anyway, the same brute-force
-//! way `float_maps.rs` does, just to see whether that's actually feasible.
+//! One can approximate cosine with the Taylor series
+//! `cos(x) ≈ 1 - x^2/2! + x^4/4! - x^6/6! + x^8/8! - ...`.
 //!
-//! Unlike `float_maps.rs`, this example needs no nightly feature: `f32` is
-//! a stable type, so `total_float_experimental` (stable) is enough.
+//! But how many terms are actually needed? This example sweeps every finite
+//! `f32` value in `[-pi, pi]` (~2.16 billion values), computes the smallest
+//! number of Taylor terms whose remainder bound guarantees an error below
+//! `TARGET_ERROR` (1e-7), and tabulates the results in a
+//! `RangeMapBlaze<FiniteF32, u8>`.
 //!
-//! See `float_maps.rs` for the ULP/epsilon/scope background this example
-//! builds on without re-explaining.
+//! Surprisingly, most representable `f32` values need only one term (`1`) or
+//! two terms (`1 - x*x/2`). The resulting `RangeMapBlaze` acts as a compact
+//! dispatch table: a lookup tells you how many Taylor terms to evaluate for
+//! each input range. Averaged uniformly over representable `f32` values in
+//! `[-pi, pi]`, only about 1.2 terms are needed.
+//!
+//! Real math libraries go even further. They first reduce the input to a
+//! smaller interval (using cosine's periodicity and symmetry) and then use
+//! carefully optimized minimax polynomials rather than a Taylor series.
+//! This example intentionally uses the simpler Taylor series so the focus
+//! remains on how `RangeMapBlaze` can discover and represent an optimal
+//! dispatch table.
 
-use core::f64::consts::PI;
-use core::num::NonZero;
-use range_set_blaze::{FiniteF32, Integer, RangeMapBlaze, RangeSetBlaze};
-
-/// Highest number of Taylor terms we're willing to try before giving up.
-const MAX_TERMS: u8 = 30;
-/// Target absolute error: `f32::EPSILON` is 1 ULP near magnitude 1.
-const TARGET_ERROR: f64 = f32::EPSILON as f64;
+use core::f32::consts::PI;
+use range_set_blaze::{FiniteF32, Integer, RangeMapBlaze, RangeSetBlaze, finite::ff32};
+use rayon::prelude::*;
+use std::thread::available_parallelism;
+use thousands::Separable;
 
 fn main() {
-    // Sweep every finite f32 and collect (value, terms-needed) pairs into a
-    // RangeMapBlaze -- it automatically merges neighboring f32 values that
-    // need the same term count into a single range.
-    let all_f32 = !RangeSetBlaze::<FiniteF32>::default(); // idiom for universe of all values
-    let scope = RangeSetBlaze::from_iter([FiniteF32::new(-PI as f32)..=FiniteF32::new(PI as f32)]);
-    let total = all_f32.len();
+    /// Target absolute error; can leave `taylor`/`std` disagreeing in the last printed digit (display-rounding, not a bug).
+    const TARGET_ERROR: f64 = 1e-7;
 
-    let term_map: RangeMapBlaze<FiniteF32, TermsNeeded> = all_f32
-        .iter()
-        .enumerate()
-        .map(|(i, x)| {
-            if i % 100_000_000 == 0 {
-                let pct = 100.0 * i as f64 / f64::from(total);
-                eprintln!("... {} values processed ({pct:.1}%)", with_underscores(i));
+    /// Smallest `N` (1..=`u8::MAX`) for which the remainder bound
+    /// `|x|^(2N) / (2N)!` guarantees error under `TARGET_ERROR`. Assumes `x`
+    /// is already in scope.
+    fn terms_needed(x: FiniteF32) -> u8 {
+        let x = f64::from(x.into_inner());
+        let xx = x * x;
+        let mut term_magnitude = 1.0_f64; // |x|^0 / 0!
+        for n in 1..=u8::MAX {
+            term_magnitude *= xx / f64::from(2 * u32::from(n) * (2 * u32::from(n) - 1));
+            if term_magnitude <= TARGET_ERROR || n == u8::MAX {
+                return n;
             }
-            (x..=x, terms_needed(x, &scope))
-        })
-        .collect();
+        }
+        unreachable!("loop always returns once n reaches u8::MAX")
+    }
+
+    let scope = RangeSetBlaze::from_iter([ff32(-PI)..=ff32(PI)]);
+
+    // Split scope across all available cores; each thread sweeps its own
+    // chunk into a local RangeMapBlaze, then `|` (union) merges them --
+    // cheap here since the chunks are domain-disjoint by construction.
+    let num_chunks = available_parallelism().map_or(1, |n| n.get());
+    let term_map: RangeMapBlaze<FiniteF32, u8> = chunks(&scope, num_chunks)
+        .into_par_iter()
+        .map(|chunk| chunk.iter().map(|x| (x, terms_needed(x))).collect())
+        .reduce(RangeMapBlaze::new, |a, b| a | b);
 
     println!(
         "Taylor-series terms needed for cos(x) to guarantee an error under one f32 epsilon, for f32 in [-pi, pi]:"
     );
-    for (range, terms) in term_map.range_values() {
-        let (start, end) = range.into_inner();
-        let label = match terms {
-            TermsNeeded::OutOfScope => "out of scope".to_string(),
-            TermsNeeded::Terms(n) if n.get() == 1 => "1 term".to_string(),
-            TermsNeeded::Terms(n) => format!("{n} terms"),
-        };
+    for (range, n) in term_map.range_values() {
+        let (start, end) = (range.start().into_inner(), range.end().into_inner());
+        let mid = (start + end) / 2.0;
+        let taylor = taylor_cos(mid, *n);
+        let std = mid.cos();
         println!(
-            "  [{:>14e}, {:>14e}] -> {label}",
-            start.into_inner(),
-            end.into_inner(),
+            "  [{start:>14e}, {end:>14e}] -> {n} term(s)  (cos(mid): taylor={taylor:.7}, std={std:.7})",
         );
     }
     println!(
-        "\n{} disjoint ranges cover all {} finite f32 values.",
-        with_underscores(term_map.range_values().count()),
-        with_underscores(term_map.len())
+        "\n{} disjoint ranges cover all {} in-scope f32 values.",
+        term_map.range_values().count().separate_with_underscores(),
+        term_map.len().separate_with_underscores()
     );
     println!(
         "Mean terms per in-scope f32 value (each value weighted equally): {:.2}",
@@ -66,72 +80,48 @@ fn main() {
     );
 }
 
-/// Formats a non-negative integer with `_` every three digits (e.g.
-/// `4278190079` -> `4_278_190_079`) -- `std` has no built-in thousands
-/// separator for `Display`.
-fn with_underscores(n: impl core::fmt::Display) -> String {
-    let digits = n.to_string();
-    let mut grouped = String::with_capacity(digits.len() + digits.len() / 3);
-    for (i, digit) in digits.chars().rev().enumerate() {
-        if i != 0 && i % 3 == 0 {
-            grouped.push('_');
-        }
-        grouped.push(digit);
-    }
-    grouped.chars().rev().collect()
+/// Splits `scope` (a single contiguous range) into `n` (or fewer, if `scope`
+/// is smaller) contiguous, non-overlapping `RangeSetBlaze`s of nearly-equal
+/// `safe_len`, any remainder spread one-per-chunk over the first chunks.
+fn chunks(scope: &RangeSetBlaze<FiniteF32>, n: usize) -> Vec<RangeSetBlaze<FiniteF32>> {
+    let n = (n as u32).clamp(1, scope.len());
+    let (base_len, remainder) = (scope.len() / n, scope.len() % n);
+
+    let mut start = scope.first().expect("scope is non-empty");
+    (0..n)
+        .map(|i| {
+            let len = base_len + u32::from(i < remainder);
+            let end = start.inclusive_end_from_start(len);
+            let chunk = RangeSetBlaze::from_iter([start..=end]);
+            start = end.checked_next().unwrap_or(end); // unused after the last chunk
+            chunk
+        })
+        .collect()
 }
 
-/// How many Taylor terms `x` needs, or that `x` is `OutOfScope` (not a
-/// member of `scope`). An enum (rather than a sentinel value like
-/// `u32::MAX`) makes the "no term count applies" case something callers
-/// have to handle explicitly instead of something they can accidentally do
-/// arithmetic on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TermsNeeded {
-    /// Term counts are always at least 1 and never exceed `MAX_TERMS` (30),
-    /// so `NonZero<u8>` fits with room to spare -- no need for `u32`.
-    Terms(NonZero<u8>),
-    OutOfScope,
-}
-
-/// Decides both whether `x` is a member of `scope` and, if so, how many
-/// terms it needs: smallest `N` (1..=`MAX_TERMS`) for which the
-/// alternating-series remainder bound, `|x|^(2N) / (2N)!`, guarantees an
-/// error under `TARGET_ERROR`.
-fn terms_needed(x: FiniteF32, scope: &RangeSetBlaze<FiniteF32>) -> TermsNeeded {
-    if !scope.contains(x) {
-        return TermsNeeded::OutOfScope;
-    }
-    let x = f64::from(x.into_inner());
+/// `cos(x)` via `terms` terms of its Taylor series, for display purposes
+/// only -- `terms_needed` never evaluates the series itself.
+fn taylor_cos(x: f32, terms: u8) -> f32 {
     let xx = x * x;
-    let mut term_magnitude = 1.0_f64; // |x|^0 / 0!
-    for n in 1..=MAX_TERMS {
-        let n = NonZero::new(n).expect("loop starts at 1, so n is never zero");
-        term_magnitude *= xx / f64::from(2 * u32::from(n.get()) * (2 * u32::from(n.get()) - 1));
-        if term_magnitude <= TARGET_ERROR || n.get() == MAX_TERMS {
-            return TermsNeeded::Terms(n);
-        }
+    let mut term = 1.0_f32;
+    let mut sum = 1.0_f32;
+    for k in 1..terms {
+        term *= -xx / (2 * u32::from(k) * (2 * u32::from(k) - 1)) as f32;
+        sum += term;
     }
-    unreachable!("loop always returns once n reaches MAX_TERMS")
+    sum
 }
 
-/// Plain arithmetic mean of the term count across every in-scope `f32`
-/// value, each counted once -- not an average over the reals in `scope`'s
-/// bounds, which would weight every magnitude equally regardless of how
-/// many (or few) `f32` values actually live there. Exact, not estimated:
-/// `term_map` already holds every in-scope value's term count, coalesced
-/// into a handful of ranges, so this just weights each range's term count
-/// by `Integer::safe_len` (its element count) and takes the weighted
-/// average -- no sampling needed.
-fn mean_terms(term_map: &RangeMapBlaze<FiniteF32, TermsNeeded>) -> f64 {
+/// Mean term count across in-scope `f32` values, each counted once (not an
+/// average over the reals, which would over-weight sparse magnitudes).
+/// Exact: weights each range's term count by its `Integer::safe_len`.
+fn mean_terms(term_map: &RangeMapBlaze<FiniteF32, u8>) -> f64 {
     let mut weighted_sum = 0.0;
-    let mut in_scope_count = 0.0;
-    for (range, terms) in term_map.range_values() {
-        if let TermsNeeded::Terms(n) = terms {
-            let len = FiniteF32::safe_len_to_f64_lossy(FiniteF32::safe_len(&range));
-            weighted_sum += len * f64::from(n.get());
-            in_scope_count += len;
-        }
+    let mut total_count = 0.0;
+    for (range, n) in term_map.range_values() {
+        let len = FiniteF32::safe_len_to_f64_lossy(FiniteF32::safe_len(&range));
+        weighted_sum += len * f64::from(*n);
+        total_count += len;
     }
-    weighted_sum / in_scope_count
+    weighted_sum / total_count
 }

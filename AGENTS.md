@@ -91,6 +91,8 @@ with it.
 - Rust getters should not use a `get_` prefix (`len()`, not `get_len()`).
 - Markdown formatting: blank lines before/after lists, fenced code blocks, and headings; keep
   list marker style consistent within a file.
+- Spell out identifiers (`percent`, not `pct`) rather than abbreviating; abbreviations save
+  little typing and cost a reader a small decode step every time.
 
 ## Specs
 
