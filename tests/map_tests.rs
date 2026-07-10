@@ -2214,7 +2214,8 @@ fn map_repro2() {
     range_map_blaze.ranges_insert(25..=25, c);
     println!("{range_map_blaze}");
     assert_eq!(
-        range_map_blaze.to_string(), r#"(-8..=-8, "a"), (-2..=-1, "a"), (2..=2, "b"), (3..=3, "a"), (8..=8, "a"), (25..=25, "c")"#
+        range_map_blaze.to_string(),
+        r#"(-8..=-8, "a"), (-2..=-1, "a"), (2..=2, "b"), (3..=3, "a"), (8..=8, "a"), (25..=25, "c")"#
     );
 }
 #[test]
