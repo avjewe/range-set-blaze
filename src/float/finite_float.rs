@@ -53,8 +53,8 @@ pub trait FiniteFloat:
     fn total_cmp(x: Self, y: Self) -> Ordering;
     fn is_finite(x: Self) -> bool;
     fn normalize(x: Self) -> Self;
-    fn next_up(x: Self) -> Self;
-    fn next_down(x: Self) -> Self;
+    fn after(x: Self) -> Self;
+    fn before(x: Self) -> Self;
     fn is_neg_zero(x: Self) -> bool;
     fn prim_safe_len(start: Self, end: Self) -> Self::SafeLen;
     fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64;
@@ -180,9 +180,9 @@ pub(crate) trait FiniteFloatImpl:
     /// Turn negative zero into positive zero, leave other numbers unchanged.
     fn normalize(x: Self) -> Self;
     /// Returns the least float strictly greater than `x` (`x.next_up()`).
-    fn next_up(x: Self) -> Self;
+    fn after(x: Self) -> Self;
     /// Returns the greatest float strictly less than `x` (`x.next_down()`).
-    fn next_down(x: Self) -> Self;
+    fn before(x: Self) -> Self;
     /// Returns true if `x`'s bit pattern is that of negative zero.
     fn is_neg_zero(x: Self) -> bool;
 
@@ -258,11 +258,11 @@ macro_rules! impl_finite_ops {
             }
         }
 
-        fn next_up(x: Self) -> Self {
+        fn after(x: Self) -> Self {
             x.next_up()
         }
 
-        fn next_down(x: Self) -> Self {
+        fn before(x: Self) -> Self {
             x.next_down()
         }
 
@@ -304,12 +304,12 @@ macro_rules! impl_finite_capability {
                 <Self as FiniteFloatImpl>::normalize(x)
             }
 
-            fn next_up(x: Self) -> Self {
-                <Self as FiniteFloatImpl>::next_up(x)
+            fn after(x: Self) -> Self {
+                <Self as FiniteFloatImpl>::after(x)
             }
 
-            fn next_down(x: Self) -> Self {
-                <Self as FiniteFloatImpl>::next_down(x)
+            fn before(x: Self) -> Self {
+                <Self as FiniteFloatImpl>::before(x)
             }
 
             fn is_neg_zero(x: Self) -> bool {

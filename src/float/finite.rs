@@ -284,7 +284,7 @@ impl<T: FiniteFloat> Finite<T> {
     #[must_use]
     pub fn after(self) -> Self {
         assert!(self != Self::MAX, "after() called on maximum value");
-        Self(T::normalize(T::next_up(self.0)))
+        Self(T::normalize(T::after(self.0)))
     }
 
     /// Returns the previous float, in total order.
@@ -304,7 +304,7 @@ impl<T: FiniteFloat> Finite<T> {
     #[must_use]
     pub fn before(self) -> Self {
         assert!(self != Self::MIN, "before() called on minimum value");
-        Self(T::normalize(T::next_down(self.0)))
+        Self(T::normalize(T::before(self.0)))
     }
 
     /// Returns the next float, in total order.

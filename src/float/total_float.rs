@@ -50,8 +50,8 @@ pub trait TotalFloat:
 
     fn hash<H: Hasher>(x: Self, state: &mut H);
     fn total_cmp(x: Self, y: Self) -> Ordering;
-    fn next_up(x: Self) -> Self;
-    fn next_down(x: Self) -> Self;
+    fn after(x: Self) -> Self;
+    fn before(x: Self) -> Self;
     fn prim_safe_len(start: Self, end: Self) -> Self::SafeLen;
     fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64;
     fn f64_to_safe_len_lossy(f: f64) -> Self::SafeLen;
@@ -258,14 +258,14 @@ macro_rules! impl_total_capability {
                 <Self as TotalFloatImpl>::total_cmp(x, y)
             }
 
-            fn next_up(x: Self) -> Self {
+            fn after(x: Self) -> Self {
                 <Self as TotalFloatImpl>::from_ordered(
                     <Self as TotalFloatImpl>::to_ordered(x)
                         .wrapping_add(<<Self as TotalFloatImpl>::Ordered as One>::one()),
                 )
             }
 
-            fn next_down(x: Self) -> Self {
+            fn before(x: Self) -> Self {
                 <Self as TotalFloatImpl>::from_ordered(
                     <Self as TotalFloatImpl>::to_ordered(x)
                         .wrapping_sub(<<Self as TotalFloatImpl>::Ordered as One>::one()),

@@ -125,10 +125,8 @@
 //! // NaN (0x7ff0000000000001) ..= NaN (0x7fffffffffffffff) -> NaN
 //!```
 
-#[doc(hidden)]
-pub mod finite_float;
-#[doc(hidden)]
-pub mod total_float;
+mod finite_float;
+mod total_float;
 
 pub mod total;
 pub use total::{Total, TotalF32, TotalF64};

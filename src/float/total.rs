@@ -193,7 +193,7 @@ impl<T: TotalFloat> Total<T> {
     #[must_use]
     pub fn after(self) -> Self {
         debug_assert!(self != Self::MAX, "after() called on maximum value");
-        Self(T::next_up(self.0))
+        Self(T::after(self.0))
     }
 
     /// Returns the previous float in total order.
@@ -212,7 +212,7 @@ impl<T: TotalFloat> Total<T> {
     #[must_use]
     pub fn before(self) -> Self {
         debug_assert!(self != Self::MIN, "before() called on minimum value");
-        Self(T::next_down(self.0))
+        Self(T::before(self.0))
     }
 
     /// Returns the next float.
