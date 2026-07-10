@@ -22,9 +22,16 @@ ci-nightly: test-nightly
 # Individual Check Commands
 # ============================================================================
 
-# Run clippy with CI settings (matches CI exactly)
+# Run clippy with CI settings (matches CI exactly, using the pinned toolchain in rust-toolchain.toml)
 clippy:
     cargo clippy --verbose --all-targets --features "std rog_experimental" -- -D clippy::all -A deprecated
+
+# Preview lints on the newest stable toolchain, ignoring the rust-toolchain.toml pin.
+# Run this occasionally to catch new/renamed lints before bumping the pin, instead of
+# being surprised when CI's `stable` runner updates out from under you.
+clippy-latest:
+    rustup update stable
+    cargo +stable clippy --verbose --all-targets --features "std rog_experimental" -- -D clippy::all -A deprecated
 
 # Run all stable tests (matches CI)
 test-stable:

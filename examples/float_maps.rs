@@ -24,7 +24,24 @@ use core::f32::consts::PI;
 use range_set_blaze::{FiniteF32, Integer, RangeMapBlaze, RangeSetBlaze, finite::ff32};
 use rayon::prelude::*;
 use std::{ops::BitOr, thread::available_parallelism};
+
+// `thousands` is a native-only dev-dependency (see the wasm32 dev-dependency
+// split in Cargo.toml), but `cargo test` still type-checks this example on
+// wasm targets. Fall back to plain `Display` there so the example builds
+// everywhere; the underscore grouping is purely cosmetic.
+#[cfg(not(target_arch = "wasm32"))]
 use thousands::Separable;
+
+#[cfg(target_arch = "wasm32")]
+trait Separable {
+    fn separate_with_underscores(&self) -> String;
+}
+#[cfg(target_arch = "wasm32")]
+impl<T: ToString> Separable for T {
+    fn separate_with_underscores(&self) -> String {
+        self.to_string()
+    }
+}
 
 const TARGET_ERROR: f64 = 1e-7;
 

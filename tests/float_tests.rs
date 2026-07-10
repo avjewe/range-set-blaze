@@ -753,10 +753,14 @@ fn finite_f16_exhaustive_bit_patterns_via_constructors() {
                 ));
             }
             if std::panic::catch_unwind(|| FiniteF16::range(x..=x)).is_ok() {
-                failures.push(format!("range(): bits {bits:#06x} ({x}) should have panicked"));
+                failures.push(format!(
+                    "range(): bits {bits:#06x} ({x}) should have panicked"
+                ));
             }
             if std::panic::catch_unwind(|| FiniteF16::slice(core::slice::from_ref(&x))).is_ok() {
-                failures.push(format!("slice(): bits {bits:#06x} ({x}) should have panicked"));
+                failures.push(format!(
+                    "slice(): bits {bits:#06x} ({x}) should have panicked"
+                ));
             }
         }
     }
@@ -905,9 +909,18 @@ fn tf64_categories() {
     // NaN everywhere, then carve out Normal, then the infinities and -0.0 as exceptions.
     let category_map = RangeMapBlaze::from_iter([
         (TotalF64::MIN..=TotalF64::MAX, Category::NaN), // everything else is NaN by default
-        (tf64(f64::NEG_INFINITY)..=tf64(f64::INFINITY), Category::Normal), // everything between the infinities is Normal, inclusive (?!)
-        (tf64(f64::NEG_INFINITY)..=tf64(f64::NEG_INFINITY), Category::NegInfinity), // carve out the infinities as exceptions
-        (tf64(f64::INFINITY)..=tf64(f64::INFINITY), Category::PosInfinity), // carve out the infinities as exceptions
+        (
+            tf64(f64::NEG_INFINITY)..=tf64(f64::INFINITY),
+            Category::Normal,
+        ), // everything between the infinities is Normal, inclusive (?!)
+        (
+            tf64(f64::NEG_INFINITY)..=tf64(f64::NEG_INFINITY),
+            Category::NegInfinity,
+        ), // carve out the infinities as exceptions
+        (
+            tf64(f64::INFINITY)..=tf64(f64::INFINITY),
+            Category::PosInfinity,
+        ), // carve out the infinities as exceptions
         (tf64(-0.0)..=tf64(-0.0), Category::MinusZero), // carve out -0.0 as an exception
     ]);
 

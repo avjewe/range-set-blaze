@@ -653,7 +653,10 @@ mod tests {
         assert_eq!(FiniteF64::MIN.checked_before(), None);
         assert_eq!(FiniteF64::MAX.checked_after(), None);
         assert_eq!(FiniteF64::MIN.checked_after(), Some(FiniteF64::MIN.after()));
-        assert_eq!(FiniteF64::MAX.checked_before(), Some(FiniteF64::MAX.before()));
+        assert_eq!(
+            FiniteF64::MAX.checked_before(),
+            Some(FiniteF64::MAX.before())
+        );
     }
 
     #[test]

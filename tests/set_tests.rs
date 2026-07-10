@@ -711,7 +711,7 @@ fn data_gen() {
             println!(
                 "range_int_set.len={}, ri={:#?}, how={how:#?} {seed} range_len={}, fraction={}",
                 range_int_set.len(),
-                &range,
+                range,
                 range_int_set.ranges_len(),
                 fraction(range_int_set, &range)
             );

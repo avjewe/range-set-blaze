@@ -302,7 +302,7 @@ fn lib_coverage_0() {
     let i = a.into_iter();
     assert_eq!(i.size_hint(), j.size_hint());
     assert_eq!(
-        alloc::format!("{:?}", &i),
+        alloc::format!("{i:?}"),
         "IntoIter { option_range_front: None, option_range_back: None, btree_map_into_iter: [(1, 3)] }"
     );
 
