@@ -1,20 +1,20 @@
 //! Tests
 
 #![cfg(test)]
-#![cfg(feature = "total_float_experimental")]
-#![cfg_attr(feature = "total_float_nightly_experimental", feature(f16))]
-#![cfg_attr(feature = "total_float_nightly_experimental", feature(f128))]
+#![cfg(feature = "float_experimental")]
+#![cfg_attr(feature = "float_nightly_experimental", feature(f16))]
+#![cfg_attr(feature = "float_nightly_experimental", feature(f128))]
 
 use num_traits::identities::One;
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 use range_set_blaze::UIntPlusOne;
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 use range_set_blaze::finite::{ff16, ff128};
 use range_set_blaze::finite::{ff32, ff64};
 use range_set_blaze::total::{TotalRangeExt, tf32, tf64};
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 use range_set_blaze::total::{tf16, tf128};
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 use range_set_blaze::{FiniteF16, FiniteF128, TotalF16, TotalF128};
 use range_set_blaze::{
     FiniteF32, FiniteF64, Integer, RangeMapBlaze, RangeSetBlaze, TotalF32, TotalF64,
@@ -25,11 +25,11 @@ wasm_bindgen_test_configure!(run_in_browser);
 
 const CONST_FINITE_F32: FiniteF32 = ff32(-0.0);
 const CONST_FINITE_F64: FiniteF64 = ff64(-0.0);
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 const CONST_FINITE_F16: FiniteF16 = ff16(1.0);
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 const CONST_FINITE_F128: FiniteF128 = ff128(-0.0);
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 const BIG_ZERO: UIntPlusOne<u128> = UIntPlusOne::<u128>::UInt(0);
 
 #[test]
@@ -43,7 +43,7 @@ fn finite_shorthands_are_const() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn finite_nightly_shorthands_are_const() {
     assert_eq!(CONST_FINITE_F16, ff16(1.0));
     assert_eq!(CONST_FINITE_F128.into_inner().to_bits(), 0.0_f128.to_bits());
@@ -89,7 +89,7 @@ fn map_complement0() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn map_complement0_nightly() {
     assert_ne!(tf16(0.0), tf16(-0.0));
     assert_eq!(ff16(0.0), ff16(-0.0));
@@ -159,7 +159,7 @@ fn set_complement0() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn set_complement_nightly() {
     let empty = RangeSetBlaze::<TotalF128>::new();
     assert_eq!(empty.len(), BIG_ZERO);
@@ -209,7 +209,7 @@ fn integer_coverage() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 #[allow(clippy::cognitive_complexity, clippy::float_cmp)]
 fn integer_coverage_nightly() {
     syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
@@ -295,7 +295,7 @@ fn test_inclusive() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn test_inclusive_nightly() {
     syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
         $(
@@ -324,7 +324,7 @@ fn inclusive_endpoints_cross_zero() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn inclusive_endpoints_cross_zero_nightly() {
     syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
         $(
@@ -355,7 +355,7 @@ fn test_floats2() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn test_floats2_nightly() {
     syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
         $(
@@ -392,7 +392,7 @@ fn test_floats() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn test_floats_nightly() {
     let mut a = TotalF16::from_primitive_range(0.0..=0.0);
     assert_eq!(TotalF16::range_next_back(&mut a), Some(tf16(0.0)));
@@ -445,7 +445,7 @@ fn total_iterators() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn total_iterators_nightly() {
     syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
         $(
@@ -515,7 +515,7 @@ fn total_complement() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn total_complement_nightly() {
     // Total128::SafeLen is UIntPlusOne, which doesn't work smoothly here, so it's a separate test below
     syntactic_for! { ty in [TotalF16, /*TotalF128,*/ FiniteF16, FiniteF128] {
@@ -554,7 +554,7 @@ fn total_complement_nightly() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn total_complement_total128() {
     let set = RangeSetBlaze::from_iter([TotalF128::MAX..=TotalF128::MAX]);
     assert!(set.contains(TotalF128::MAX));
@@ -717,7 +717,7 @@ fn finite_slice_unchecked_bypasses_validation_f32() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 #[should_panic(expected = "Finite type requires a finite value")]
 fn finite_range_rejects_nan_start_f128() {
     let _ = FiniteF128::from_primitive_range(f128::NAN..=1.0);
@@ -725,7 +725,7 @@ fn finite_range_rejects_nan_start_f128() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn finite_values_normalizes_negative_zero_f128() {
     let value = FiniteF128::values([-0.0]).next().unwrap();
 
@@ -735,7 +735,7 @@ fn finite_values_normalizes_negative_zero_f128() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 #[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
 fn finite_slice_rejects_nan_f128() {
     let _ = FiniteF128::from_primitive_slice(&[f128::NAN]);
@@ -743,7 +743,7 @@ fn finite_slice_rejects_nan_f128() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn finite_slice_unchecked_bypasses_validation_f128() {
     // SAFETY: deliberately violates Finite's invariant, see the f64 variant above.
     let values = unsafe { FiniteF128::from_primitive_slice_unchecked(&[f128::NAN]) };
@@ -768,7 +768,7 @@ fn finite_slice_unchecked_bypasses_validation_f128() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn finite_f16_exhaustive_bit_patterns_via_constructors() {
     let mut failures = Vec::new();
 
@@ -861,7 +861,7 @@ fn finite_f16_exhaustive_bit_patterns_via_constructors() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 fn full_16() {
     syntactic_for! { ty in [TotalF16,  FiniteF16] {
         $(

@@ -10,7 +10,7 @@ use core::{
     ops::{AddAssign, SubAssign},
 };
 
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 use super::total_float::{from_ordered_16, from_ordered_128, to_ordered_16, to_ordered_128};
 use super::total_float::{from_ordered_32, from_ordered_64, to_ordered_32, to_ordered_64};
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
@@ -274,9 +274,9 @@ macro_rules! impl_finite_ops {
 
 impl private::Sealed for f64 {}
 impl private::Sealed for f32 {}
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl private::Sealed for f16 {}
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl private::Sealed for f128 {}
 
 macro_rules! impl_finite_capability {
@@ -341,9 +341,9 @@ macro_rules! impl_finite_capability {
 
 impl_finite_capability!(f64, u64);
 impl_finite_capability!(f32, u32);
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl_finite_capability!(f16, u16);
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl_finite_capability!(f128, u128);
 
 impl FiniteFloatImpl for f64 {
@@ -374,7 +374,7 @@ impl FiniteFloatImpl for f32 {
     }
 }
 
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl FiniteFloatImpl for f16 {
     type Bits = u16;
     type Ordered = i16;
@@ -389,7 +389,7 @@ impl FiniteFloatImpl for f16 {
     }
 }
 
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl FiniteFloatImpl for f128 {
     type Bits = u128;
     type Ordered = i128;

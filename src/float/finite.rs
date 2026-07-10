@@ -2,8 +2,8 @@
 //!
 //! Ordering and other semantics are as per normal floating point comparisons.
 //!
-//! Enable with `total_float_experimental` (stable, `FiniteF32`/`FiniteF64`) and
-//! `total_float_nightly_experimental` (nightly, adds `FiniteF16`/`FiniteF128`).
+//! Enable with `float_experimental` (stable, `FiniteF32`/`FiniteF64`) and
+//! `float_nightly_experimental` (nightly, adds `FiniteF16`/`FiniteF128`).
 
 use core::{
     cmp::Ordering,
@@ -26,10 +26,10 @@ pub type FiniteF64 = Finite<f64>;
 /// Total ordered f32, with `-0.0` normalized to `+0.0`, and excluding NaN and infinities.
 pub type FiniteF32 = Finite<f32>;
 /// Total ordered f16, with `-0.0` normalized to `+0.0`, and excluding NaN and infinities.
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 pub type FiniteF16 = Finite<f16>;
 /// Total ordered f128, with `-0.0` normalized to `+0.0`, and excluding NaN and infinities.
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 pub type FiniteF128 = Finite<f128>;
 
 /// Construct a [`FiniteF64`] from an `f64`. Shorthand for [`FiniteF64::new`]
@@ -45,14 +45,14 @@ pub const fn ff32(x: f32) -> FiniteF32 {
 }
 
 /// Construct a [`FiniteF16`] from an `f16`. Shorthand for [`FiniteF16::new`]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 #[must_use]
 pub const fn ff16(x: f16) -> FiniteF16 {
     finite_f16(x)
 }
 
 /// Construct a [`FiniteF128`] from an `f128`. Shorthand for [`FiniteF128::new`]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 #[must_use]
 pub const fn ff128(x: f128) -> FiniteF128 {
     finite_f128(x)
@@ -81,9 +81,9 @@ macro_rules! finite_const_constructor {
 
 finite_const_constructor!(finite_f64, f64, FiniteF64, 0x7ff0_0000_0000_0000);
 finite_const_constructor!(finite_f32, f32, FiniteF32, 0x7f80_0000);
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 finite_const_constructor!(finite_f16, f16, FiniteF16, 0x7c00);
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 finite_const_constructor!(
     finite_f128,
     f128,
@@ -113,15 +113,15 @@ finite_const_constructor!(
 ///
 /// # Enabling
 ///
-/// This type is experimental and must be enabled with the `total_float_experimental` feature.
+/// This type is experimental and must be enabled with the `float_experimental` feature.
 /// ```bash
-/// cargo add range-set-blaze --features "total_float_experimental"
+/// cargo add range-set-blaze --features "float_experimental"
 /// ```
 /// That provides the `FiniteF32` and `FiniteF64` types.
 ///
-/// If you're building with nightly, you can instead use the `total_float_nightly_experimental` feature.
+/// If you're building with nightly, you can instead use the `float_nightly_experimental` feature.
 /// ```bash
-/// cargo add range-set-blaze --features "total_float_nightly_experimental"
+/// cargo add range-set-blaze --features "float_nightly_experimental"
 /// ```
 /// To also use the `FiniteF16` and `FiniteF128` types.
 #[repr(transparent)]
@@ -940,7 +940,7 @@ mod tests {
         assert_eq!(start.inclusive_end_from_start(length), endpoint);
     }
 
-    #[cfg(feature = "total_float_nightly_experimental")]
+    #[cfg(feature = "float_nightly_experimental")]
     #[test]
     fn f16_finite_adjacency_and_lengths_are_exhaustive() {
         for bits in 0..=u16::MAX {

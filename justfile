@@ -24,24 +24,24 @@ ci-nightly: test-nightly
 
 # Run clippy with CI settings (matches CI exactly, using the pinned toolchain in rust-toolchain.toml)
 clippy:
-    cargo clippy --verbose --all-targets --features "std rog_experimental total_float_experimental" -- -D clippy::all -A deprecated
+    cargo clippy --verbose --all-targets --features "std rog_experimental float_experimental" -- -D clippy::all -A deprecated
 
 # Preview lints on the newest stable toolchain, ignoring the rust-toolchain.toml pin.
 # Run this occasionally to catch new/renamed lints before bumping the pin, instead of
 # being surprised when CI's `stable` runner updates out from under you.
 clippy-latest:
     rustup update stable
-    cargo +stable clippy --verbose --all-targets --features "std rog_experimental total_float_experimental" -- -D clippy::all -A deprecated
+    cargo +stable clippy --verbose --all-targets --features "std rog_experimental float_experimental" -- -D clippy::all -A deprecated
 
 # Run all stable tests (matches CI)
 test-stable:
     cargo test --verbose
     cargo test --verbose --release
-    cargo test --verbose --release --features "std total_float_experimental"
+    cargo test --verbose --release --features "std float_experimental"
     cargo test --verbose --no-default-features --features "rog_experimental"
-    cargo test --verbose --features "std total_float_experimental"
-    cargo test --verbose --features "std rog_experimental total_float_experimental"
-    cargo test --verbose --no-default-features --features "total_float_experimental"
+    cargo test --verbose --features "std float_experimental"
+    cargo test --verbose --features "std rog_experimental float_experimental"
+    cargo test --verbose --no-default-features --features "float_experimental"
 
 # Run nightly tests with from_slice feature
 # Uses `cargo +nightly` (not `rustup override set`) so this is safe to run
@@ -59,17 +59,17 @@ pre-commit: clippy
 # ============================================================================
 
 # Build and open the docs exactly as docs.rs publishes them
-# (excludes the nightly-only `total_float_nightly_experimental` feature, so
+# (excludes the nightly-only `float_nightly_experimental` feature, so
 # `f16`/`f128` wrappers do not appear). Keep this feature list in sync with
 # `[package.metadata.docs.rs]` in Cargo.toml.
 # Uses `cargo +nightly` because docs.rs itself always builds with nightly --
 # `from_slice`'s `feature(portable_simd)` won't compile on stable otherwise.
 show-docs:
-    cargo +nightly doc --no-deps --open --features "std,rog_experimental,total_float_experimental,from_slice,test_util"
+    cargo +nightly doc --no-deps --open --features "std,rog_experimental,float_experimental,from_slice,test_util"
 
 # Rebuild the docs (same features as `show-docs`) without opening a browser
 update-docs:
-    cargo +nightly doc --no-deps --features "std,rog_experimental,total_float_experimental,from_slice,test_util"
+    cargo +nightly doc --no-deps --features "std,rog_experimental,float_experimental,from_slice,test_util"
 
 # Check documentation for dead links (requires cargo-deadlinks)
 doc-links:
@@ -100,7 +100,7 @@ ci-full: clippy test-stable doc-links audit publish-dry-all
 
 # Run the float_maps example in release mode (it's too slow in debug)
 run-float-maps:
-    cargo run --release --example float_maps --features total_float_experimental
+    cargo run --release --example float_maps --features float_experimental
 
 # Clean build artifacts
 clean:
@@ -122,7 +122,7 @@ fmt-check:
 msrv-check:
     cargo +1.87 check --verbose
     cargo +1.87 check --verbose --no-default-features --features "rog_experimental"
-    cargo +1.87 check --verbose --features "std total_float_experimental"
+    cargo +1.87 check --verbose --features "std float_experimental"
 
 # ============================================================================
 # WASM (wasip1 via wasmtime — the browser/Chrome lane is CI-only)
@@ -133,15 +133,15 @@ test-wasm:
     rustup target add wasm32-wasip1
     CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose
     CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose --no-default-features --features "rog_experimental"
-    CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose --features "std total_float_experimental"
+    CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose --features "std float_experimental"
 
 # Portable stable float tests for local WSL runs.
 test-floats-portable:
-    cargo test --verbose --features "std total_float_experimental"
-    cargo test --verbose --release --features "std total_float_experimental"
+    cargo test --verbose --features "std float_experimental"
+    cargo test --verbose --release --features "std float_experimental"
     rustup target add wasm32-wasip1
-    CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose --features "std total_float_experimental"
-    wasm-pack test --node -- --features "std total_float_experimental" --verbose
+    CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose --features "std float_experimental"
+    wasm-pack test --node -- --features "std float_experimental" --verbose
 
 # ============================================================================
 # SIMD Feature (from_slice) - Requires Nightly

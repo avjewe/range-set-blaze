@@ -18,7 +18,7 @@ public-API quality matter more here than in an experimental project.
   approves.
 - New capabilities that are not yet API-stable belong behind a `_experimental` (or
   `_nightly_experimental`) feature flag, matching the existing `rog_experimental`,
-  `total_float_experimental`, and `total_float_nightly_experimental` pattern in `Cargo.toml`.
+  `float_experimental`, and `float_nightly_experimental` pattern in `Cargo.toml`.
   Do not fold experimental behavior into the default feature set.
 - Keep the crate `no_std` (see `#![no_std]` in `src/lib.rs`) and `alloc`-based (not
   allocation-free) unless the user explicitly changes that goal. The `std` feature only adds

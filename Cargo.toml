@@ -33,14 +33,14 @@ members = [
 
 [[example]]
 name = "float_maps"
-required-features = ["total_float_experimental"]
+required-features = ["float_experimental"]
 
 [features]
 default = ["std"]
 std = ["itertools/use_std", "num-traits/std", "num-integer/std"]
 rog_experimental = []
-total_float_experimental = []
-total_float_nightly_experimental = ["total_float_experimental"]
+float_experimental = []
+float_nightly_experimental = ["float_experimental"]
 from_slice = []
 test_util = ["rand"]
 
@@ -95,9 +95,9 @@ path = "benches/bench_map.rs"
 harness = false
 
 [package.metadata.docs.rs]
-# Document every feature except `total_float_nightly_experimental`, so the
+# Document every feature except `float_nightly_experimental`, so the
 # nightly-only `f16`/`f128` wrappers do not appear in the published docs.
-features = ["std", "rog_experimental", "total_float_experimental", "from_slice", "test_util"]
+features = ["std", "rog_experimental", "float_experimental", "from_slice", "test_util"]
 
 ###############################################################################
 # Global lint levels (stable since Rust 1.77; on older nightly use

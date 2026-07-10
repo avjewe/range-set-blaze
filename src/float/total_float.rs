@@ -12,7 +12,7 @@ use core::{
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 use num_traits::{One, Zero};
 
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 use crate::UIntPlusOne;
 
 mod private {
@@ -162,25 +162,25 @@ pub(crate) const fn from_ordered_32(mut bits: i32) -> f32 {
     bits ^= ((bits >> 31).cast_unsigned() >> 1).cast_signed();
     f32::from_bits(bits.cast_unsigned())
 }
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 pub(crate) const fn to_ordered_16(x: f16) -> i16 {
     let mut bits = x.to_bits().cast_signed();
     bits ^= ((bits >> 15).cast_unsigned() >> 1).cast_signed();
     bits
 }
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 pub(crate) const fn from_ordered_16(mut bits: i16) -> f16 {
     // Reversing the XOR transformation
     bits ^= ((bits >> 15).cast_unsigned() >> 1).cast_signed();
     f16::from_bits(bits.cast_unsigned())
 }
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 pub(crate) const fn to_ordered_128(x: f128) -> i128 {
     let mut bits = x.to_bits().cast_signed();
     bits ^= ((bits >> 127).cast_unsigned() >> 1).cast_signed();
     bits
 }
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 pub(crate) const fn from_ordered_128(mut bits: i128) -> f128 {
     // Reversing the XOR transformation
     bits ^= ((bits >> 127).cast_unsigned() >> 1).cast_signed();
@@ -236,9 +236,9 @@ macro_rules! impl_total_ops_safelen {
 
 impl private::Sealed for f64 {}
 impl private::Sealed for f32 {}
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl private::Sealed for f16 {}
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl private::Sealed for f128 {}
 
 macro_rules! impl_total_capability {
@@ -297,9 +297,9 @@ macro_rules! impl_total_capability {
 
 impl_total_capability!(f64, i128);
 impl_total_capability!(f32, i64);
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl_total_capability!(f16, i32);
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl_total_capability!(f128, UIntPlusOne<u128>);
 
 impl TotalFloatImpl for f64 {
@@ -336,7 +336,7 @@ impl TotalFloatImpl for f32 {
     }
 }
 
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl TotalFloatImpl for f16 {
     type Bits = u16;
     type Ordered = i16;
@@ -353,7 +353,7 @@ impl TotalFloatImpl for f16 {
     }
 }
 
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 impl TotalFloatImpl for f128 {
     type Bits = u128;
     type Ordered = i128;

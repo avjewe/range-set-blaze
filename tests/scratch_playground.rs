@@ -1,5 +1,5 @@
 //! TODO000: delete this scratch file and the matching .vscode/settings.json entry when done
-#![cfg(feature = "total_float_experimental")]
+#![cfg(feature = "float_experimental")]
 use range_set_blaze::RangeSetBlaze;
 use range_set_blaze::finite::{FiniteRangeExt, FiniteSliceExt, ff32};
 use range_set_blaze::total::TotalSliceExt;

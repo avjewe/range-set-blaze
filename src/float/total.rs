@@ -4,8 +4,8 @@
 //! Every distinct bit pattern is a separate valid value, even though quite a few of them are NaN.\
 //! For example, in a `TotalF32` all 16 million different NaN values are distinct from each other.
 //!
-//! Enable with `total_float_experimental` (stable, `TotalF32`/`TotalF64`) and
-//! `total_float_nightly_experimental` (nightly, adds `TotalF16`/`TotalF128`).
+//! Enable with `float_experimental` (stable, `TotalF32`/`TotalF64`) and
+//! `float_nightly_experimental` (nightly, adds `TotalF16`/`TotalF128`).
 //! ```
 //! use range_set_blaze::{RangeSetBlaze, TotalF64, TotalF32};
 //! let set = RangeSetBlaze::from_iter([TotalF64::new(3.0)..=TotalF64::new(5.0)]);
@@ -38,10 +38,10 @@ pub type TotalF64 = Total<f64>;
 /// Total ordered f32, all values valid, including NaN, -0.0, +0.0, and infinities.
 pub type TotalF32 = Total<f32>;
 /// Total ordered f16, all values valid, including NaN, -0.0, +0.0, and infinities.
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 pub type TotalF16 = Total<f16>;
 /// Total ordered f128, all values valid, including NaN, -0.0, +0.0, and infinities.
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 pub type TotalF128 = Total<f128>;
 
 /// Construct a [`TotalF64`] from an `f64`. Shorthand for [`TotalF64::new`]
@@ -57,14 +57,14 @@ pub const fn tf32(x: f32) -> TotalF32 {
 }
 
 /// Construct a [`TotalF16`] from an `f16`. Shorthand for [`TotalF16::new`]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 #[must_use]
 pub const fn tf16(x: f16) -> TotalF16 {
     TotalF16::new(x)
 }
 
 /// Construct a [`TotalF128`] from an `f128`. Shorthand for [`TotalF128::new`]
-#[cfg(feature = "total_float_nightly_experimental")]
+#[cfg(feature = "float_nightly_experimental")]
 #[must_use]
 pub const fn tf128(x: f128) -> TotalF128 {
     TotalF128::new(x)
@@ -76,15 +76,15 @@ pub const fn tf128(x: f128) -> TotalF128 {
 ///
 /// # Enabling
 ///
-/// This type is experimental and must be enabled with the `total_float_experimental` feature.
+/// This type is experimental and must be enabled with the `float_experimental` feature.
 /// ```bash
-/// cargo add range-set-blaze --features "total_float_experimental"
+/// cargo add range-set-blaze --features "float_experimental"
 /// ```
 /// That provides the `TotalF32` and `TotalF64` types.
 ///
-/// If you're building with nightly, you can instead use the `total_float_nightly_experimental` feature.
+/// If you're building with nightly, you can instead use the `float_nightly_experimental` feature.
 /// ```bash
-/// cargo add range-set-blaze --features "total_float_nightly_experimental"
+/// cargo add range-set-blaze --features "float_nightly_experimental"
 /// ```
 /// To also use the `TotalF16` and `TotalF128` types.
 #[repr(transparent)]
@@ -818,7 +818,7 @@ mod tests {
         assert_eq!(end.start_from_inclusive_end(length), start);
     }
 
-    #[cfg(feature = "total_float_nightly_experimental")]
+    #[cfg(feature = "float_nightly_experimental")]
     #[test]
     fn f16_total_adjacency_and_lengths_are_exhaustive() {
         for bits in 0..=u16::MAX {
@@ -843,7 +843,7 @@ mod tests {
         hasher.finish()
     }
     #[test]
-    #[cfg(feature = "total_float_nightly_experimental")]
+    #[cfg(feature = "float_nightly_experimental")]
     fn ordered_round_trip() {
         use crate::float::total_float::from_ordered_16;
         use crate::float::total_float::to_ordered_16;
