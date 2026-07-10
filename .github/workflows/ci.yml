@@ -1,4 +1,4 @@
-Whatname: test
+name: test
 
 on:
   push:
