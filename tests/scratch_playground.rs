@@ -90,7 +90,10 @@ fn scratch6_tiny() {
     // not f32::MIN_POSITIVE (which is the smallest *normal* value).
     let tiny = f32::from_bits(1);
     println!("TINY = {tiny:e} (bits: {:#010x})", tiny.to_bits());
-    println!("TINY == 0f32.next_up()? {}", tiny == 0f32.next_up());
+    println!(
+        "TINY == 0f32.next_up()? {}",
+        tiny.to_bits() == 0f32.next_up().to_bits()
+    );
     println!(
         "TINY < f32::MIN_POSITIVE (smallest normal, {:e})? {}",
         f32::MIN_POSITIVE,

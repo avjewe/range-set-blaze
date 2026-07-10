@@ -50,8 +50,7 @@ fn finite_nightly_shorthands_are_const() {
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn map_complement0() {
-    assert!(0.0 == -0.0);
-    assert_eq!(0.0, -0.0);
+    assert!(<f64 as PartialEq>::eq(&0.0, &-0.0));
     assert_ne!(tf64(0.0), tf64(-0.0));
     assert_eq!(ff64(0.0), ff64(-0.0));
     assert_ne!(tf32(0.0), tf32(-0.0));
@@ -621,7 +620,9 @@ fn finite_values_rejects_nan() {
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn finite_values_normalizes_negative_zero() {
-    let value = FiniteF64::values([-0.0]).next().unwrap();
+    let value = FiniteF64::values([-0.0])
+        .next()
+        .expect("one input produces one value");
 
     assert_eq!(value, FiniteF64::new(0.0));
     assert_eq!(value.into_inner().to_bits(), 0.0f64.to_bits());
@@ -668,7 +669,9 @@ fn finite_range_rejects_nan_start_f32() {
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn finite_values_normalizes_negative_zero_f32() {
-    let value = FiniteF32::values([-0.0]).next().unwrap();
+    let value = FiniteF32::values([-0.0])
+        .next()
+        .expect("one input produces one value");
 
     assert_eq!(value, FiniteF32::new(0.0));
     assert_eq!(value.into_inner().to_bits(), 0.0f32.to_bits());

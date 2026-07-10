@@ -73,7 +73,7 @@ update-docs:
 # Check documentation for dead links (requires cargo-deadlinks)
 doc-links:
     cargo install cargo-deadlinks
-    cargo doc --no-deps --all-features
+    cargo +nightly doc --no-deps --all-features
     cargo deadlinks --dir target/doc | grep -vE '(help\.html|settings\.html)'
 
 # Audit dependencies for security and license issues (requires cargo-audit and cargo-deny)
@@ -88,9 +88,9 @@ publish-dry:
 
 # Test publishing with all features
 publish-dry-all:
-    cargo publish --all-features --dry-run
+    cargo +nightly publish --all-features --dry-run
 
-# Full local CI simulation (stable only, no WASM/embedded)
+# Full local CI simulation (no WASM/embedded)
 ci-full: clippy test-stable doc-links audit publish-dry-all
 
 # ============================================================================

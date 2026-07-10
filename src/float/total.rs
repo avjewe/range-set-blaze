@@ -31,6 +31,7 @@ use core::{
     hash::{Hash, Hasher},
     mem,
     ops::RangeInclusive,
+    slice::from_raw_parts,
 };
 /// Total ordered f64, all values valid, including NaN, -0.0, +0.0, and infinities.
 pub type TotalF64 = Total<f64>;
@@ -350,7 +351,7 @@ impl<T: TotalFloat> TotalSliceExt<T> for [Total<T>] {
     fn as_primitive_slice(&self) -> &[T] {
         // SAFETY: TotalFloat is #[repr(transparent)] over T, making `&[T]`
         // and `&[TotalFloat]` entirely interchangeable in layout and lifetimes.
-        unsafe { mem::transmute::<&[Total<T>], &[T]>(self) }
+        unsafe { from_raw_parts(self.as_ptr().cast::<T>(), self.len()) }
     }
 }
 

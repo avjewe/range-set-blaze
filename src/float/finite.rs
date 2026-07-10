@@ -11,6 +11,7 @@ use core::{
     hash::{Hash, Hasher},
     mem,
     ops::RangeInclusive,
+    slice::from_raw_parts,
 };
 
 use super::finite_float::FiniteFloat;
@@ -354,7 +355,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// Converts an inclusive primitive range into an inclusive [`Finite`] range.
     ///
     /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
-
+    ///
     ///
     /// # Examples
     /// ```
@@ -376,7 +377,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// Converts inclusive primitive ranges into inclusive [`Finite`] ranges.
     ///
     /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
-
+    ///
     ///
     /// # Examples
     /// ```
@@ -415,7 +416,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// Views primitive values as ordered [`Finite`] values, validating as it goes.
     ///
     /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
-
+    ///
     ///
     /// This runs in `O(n)` (to validate every element) and does not allocate.
     /// # Examples
@@ -447,7 +448,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// Views primitive values as ordered [`Finite`] values, without validating them.
     ///
     /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
-
+    ///
     ///
     /// This runs in `O(1)` and does not allocate.
     ///
@@ -476,7 +477,7 @@ pub trait FiniteSliceExt<T: FiniteFloat> {
     /// Views [`Finite`] values as primitive values.
     ///
     /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
-
+    ///
     ///
     /// This runs in `O(1)` and does not allocate.
     /// # Examples
@@ -494,7 +495,7 @@ impl<T: FiniteFloat> FiniteSliceExt<T> for [Finite<T>] {
     fn as_primitive_slice(&self) -> &[T] {
         // SAFETY: FiniteFloat is #[repr(transparent)] over T, making `&[T]`
         // and `&[FiniteFloat]` entirely interchangeable in layout and lifetimes.
-        unsafe { mem::transmute::<&[Finite<T>], &[T]>(self) }
+        unsafe { from_raw_parts(self.as_ptr().cast::<T>(), self.len()) }
     }
 }
 
@@ -504,7 +505,7 @@ pub trait FiniteRangeExt<T: FiniteFloat> {
     /// Converts an inclusive [`Finite`] range into an inclusive primitive range.
     ///
     /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
-
+    ///
     ///
     /// This is the reverse of [`Finite::from_primitive_range`].
     ///
@@ -522,7 +523,7 @@ pub trait FiniteRangeExt<T: FiniteFloat> {
     /// Converts an inclusive [`Finite`] range into a `(start, end)` tuple of primitive values.
     ///
     /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
-
+    ///
     ///
     /// Mirrors [`RangeInclusive::into_inner`] from the standard library, which unwraps a
     /// range into its `(start, end)` tuple; this additionally converts each endpoint to its
