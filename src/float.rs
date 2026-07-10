@@ -16,11 +16,11 @@
 //! assert!(set.contains(TotalF64::new(3.1)));
 //! assert!(!set.contains(TotalF64::new(2.9)));
 //!
-//! let set = RangeSetBlaze::from(FiniteF64::range(3.0..=5.0));
+//! let set = RangeSetBlaze::from(FiniteF64::from_primitive_range(3.0..=5.0));
 //! assert!(set.contains(FiniteF64::new(4.9)));
 //! assert!(!set.contains(FiniteF64::new(5.1)));
 //!
-//! let set = RangeSetBlaze::from_iter(TotalF32::ranges([3.0..=5.0, 7.0..=9.0]));
+//! let set = RangeSetBlaze::from_iter(TotalF32::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
 //! assert!(set.contains(TotalF32::new(4.0)));
 //! assert!(!set.contains(TotalF32::new(6.0)));
 //!```
@@ -44,7 +44,7 @@
 //! have right-to-left precedence, so later entries win).
 //!
 //!```
-//! use range_set_blaze::{RangeMapBlaze, TotalF64, total::tf64};
+//! use range_set_blaze::{RangeMapBlaze, TotalF64, total::{tf64, TotalRangeExt}};
 //!
 //! #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 //! enum Category {
@@ -70,7 +70,7 @@
 //! # assert_eq!(category_map.get(tf64(0.0)), Some(&Category::Normal));
 //!
 //! for (range, category) in category_map.range_values() {
-//!     let (start, end) = (range.start().into_inner(), range.end().into_inner());
+//!     let (start, end) = range.into_primitive_inner();
 //!     println!(
 //!         "{start:e} (0x{:016x}) ..= {end:e} (0x{:016x}) -> {category:?}",
 //!         start.to_bits(),

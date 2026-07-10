@@ -10,11 +10,11 @@
 //! assert!(set.contains(FiniteF64::new(3.1)));
 //! assert!(!set.contains(FiniteF64::new(2.9)));
 //!
-//! let set = RangeSetBlaze::from(FiniteF64::range(3.0..=5.0));
+//! let set = RangeSetBlaze::from(FiniteF64::from_primitive_range(3.0..=5.0));
 //! assert!(set.contains(FiniteF64::new(4.9)));
 //! assert!(!set.contains(FiniteF64::new(5.1)));
 //!
-//! let set = RangeSetBlaze::from_iter(FiniteF32::ranges([3.0..=5.0, 7.0..=9.0]));
+//! let set = RangeSetBlaze::from_iter(FiniteF32::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
 //! assert!(set.contains(FiniteF32::new(4.0)));
 //! assert!(!set.contains(FiniteF32::new(6.0)));
 //!```
@@ -162,7 +162,8 @@ impl<T: FiniteFloat> Finite<T> {
     /// Creates a new [`Finite`] from a primitive float without validating it.
     ///
     /// This is the unchecked building block every validating constructor in this module
-    /// (`new`, `try_new`, `from_ordered`, `range`, `values`, `slice`, ...) is defined in terms
+    /// (`new`, `try_new`, `from_ordered`, `from_primitive_range`, `values`,
+    /// `from_primitive_slice`, ...) is defined in terms
     /// of. Prefer those; only reach for this when you have already independently established
     /// the safety precondition below and need to skip the redundant check.
     ///
@@ -365,12 +366,16 @@ impl<T: FiniteFloat> Finite<T> {
         }
     }
 
-    /// Convenience method to convert an inclusive primitive range into an inclusive [`Finite`] range.
+    /// Converts an inclusive primitive range into an inclusive [`Finite`] range.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+
+    ///
     /// # Examples
     /// ```
     /// use range_set_blaze::{RangeSetBlaze, FiniteF64};
     ///
-    /// let short = RangeSetBlaze::from(FiniteF64::range(3.0..=5.0));
+    /// let short = RangeSetBlaze::from(FiniteF64::from_primitive_range(3.0..=5.0));
     /// let long = RangeSetBlaze::from(FiniteF64::new(3.0)..=FiniteF64::new(5.0));
     /// assert_eq!(short, long);
     /// ```
@@ -378,24 +383,28 @@ impl<T: FiniteFloat> Finite<T> {
     ///
     /// Panics if `start` or `end` is not finite.
     #[must_use]
-    pub fn range(range: RangeInclusive<T::Primitive>) -> RangeInclusive<Self> {
+    pub fn from_primitive_range(range: RangeInclusive<T::Primitive>) -> RangeInclusive<Self> {
         let (start, end) = range.into_inner();
         Self::new(start)..=Self::new(end)
     }
 
-    /// Convenience method to convert inclusive primitive ranges into inclusive [`Finite`] ranges.
+    /// Converts inclusive primitive ranges into inclusive [`Finite`] ranges.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+
+    ///
     /// # Examples
     /// ```
     /// use range_set_blaze::{RangeSetBlaze, FiniteF64};
     ///
-    /// let short = RangeSetBlaze::from_iter(FiniteF64::ranges([1.0..=2.0, 3.0..=4.0]));
+    /// let short = RangeSetBlaze::from_iter(FiniteF64::from_primitive_ranges([1.0..=2.0, 3.0..=4.0]));
     /// let long = RangeSetBlaze::from_iter([FiniteF64::new(1.0)..=FiniteF64::new(2.0), FiniteF64::new(3.0)..=FiniteF64::new(4.0)]);
     /// assert_eq!(short, long);
-    pub fn ranges<I>(ranges: I) -> impl Iterator<Item = RangeInclusive<Self>>
+    pub fn from_primitive_ranges<I>(ranges: I) -> impl Iterator<Item = RangeInclusive<Self>>
     where
         I: IntoIterator<Item = RangeInclusive<T::Primitive>>,
     {
-        ranges.into_iter().map(Self::range)
+        ranges.into_iter().map(Self::from_primitive_range)
     }
 
     /// Convenience method to convert primitive values into ordered [`Finite`] values.
@@ -420,12 +429,15 @@ impl<T: FiniteFloat> Finite<T> {
 
     /// Views primitive values as ordered [`Finite`] values, validating as it goes.
     ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+
+    ///
     /// This runs in `O(n)` (to validate every element) and does not allocate.
     /// # Examples
     /// ```
     /// use range_set_blaze::{RangeSetBlaze, FiniteF64};
     ///
-    /// let short = RangeSetBlaze::from_iter(FiniteF64::slice(&[1.0, 2.0, 3.0, 4.0]));
+    /// let short = RangeSetBlaze::from_iter(FiniteF64::from_primitive_slice(&[1.0, 2.0, 3.0, 4.0]));
     /// let long = RangeSetBlaze::from_iter([FiniteF64::new(1.0), FiniteF64::new(2.0), FiniteF64::new(3.0), FiniteF64::new(4.0)]);
     /// assert_eq!(short, long);
     /// ```
@@ -433,10 +445,10 @@ impl<T: FiniteFloat> Finite<T> {
     /// # Panics
     ///
     /// Panics if any element is not finite, or is `-0.0` (which can't be normalized to `+0.0`
-    /// without copying — see [`Finite::slice_unchecked`] if you need a true zero-copy view and
-    /// can guarantee your data already satisfies [`Finite`]'s invariant).
+    /// without copying — see [`Finite::from_primitive_slice_unchecked`] if you need a true
+    /// zero-copy view and can guarantee your data already satisfies [`Finite`]'s invariant).
     #[must_use]
-    pub fn slice(values: &[T::Primitive]) -> &[Self] {
+    pub fn from_primitive_slice(values: &[T::Primitive]) -> &[Self] {
         assert!(
             values
                 .iter()
@@ -444,10 +456,13 @@ impl<T: FiniteFloat> Finite<T> {
             "Finite type requires finite, non-negative-zero values"
         );
         // SAFETY: just validated every element is finite and not -0.0.
-        unsafe { Self::slice_unchecked(values) }
+        unsafe { Self::from_primitive_slice_unchecked(values) }
     }
 
     /// Views primitive values as ordered [`Finite`] values, without validating them.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+
     ///
     /// This runs in `O(1)` and does not allocate.
     ///
@@ -463,7 +478,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// though violating it today would only produce incorrect results (see
     /// [`Finite::new_unchecked`] for the full rationale).
     #[must_use]
-    pub const unsafe fn slice_unchecked(values: &[T::Primitive]) -> &[Self] {
+    pub const unsafe fn from_primitive_slice_unchecked(values: &[T::Primitive]) -> &[Self] {
         // SAFETY: Finite is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
         // and `&[Finite]` entirely interchangeable in layout and lifetimes; the caller is
         // responsible for the value-level invariant per the safety doc above.
@@ -471,20 +486,85 @@ impl<T: FiniteFloat> Finite<T> {
     }
 }
 
-/// View [`Finite`] values as primitive values.
-///
-/// This runs in `O(1)` and does not allocate.
-/// # Examples
-/// ```
-/// use range_set_blaze::FiniteF64;
-/// use range_set_blaze::finite;
-///
-/// assert_eq!(&[1.0, 2.0, 3.0], finite::primitive_slice(&[FiniteF64::new(1.0), FiniteF64::new(2.0), FiniteF64::new(3.0)]))
-#[must_use]
-pub const fn primitive_slice<T: FiniteFloat>(values: &[Finite<T>]) -> &[T::Primitive] {
-    // SAFETY: FiniteFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
-    // and `&[FiniteFloat]` entirely interchangeable in layout and lifetimes.
-    unsafe { mem::transmute::<&[Finite<T>], &[T::Primitive]>(values) }
+/// Extension trait for viewing a slice of [`Finite`] values as primitive values.
+pub trait FiniteSliceExt<T: FiniteFloat> {
+    /// Views [`Finite`] values as primitive values.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+
+    ///
+    /// This runs in `O(1)` and does not allocate.
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::FiniteF64;
+    /// use range_set_blaze::finite::FiniteSliceExt;
+    ///
+    /// let finites = [FiniteF64::new(1.0), FiniteF64::new(2.0), FiniteF64::new(3.0)];
+    /// assert_eq!(&[1.0, 2.0, 3.0], finites.as_primitive_slice());
+    /// ```
+    fn as_primitive_slice(&self) -> &[T::Primitive];
+}
+
+impl<T: FiniteFloat> FiniteSliceExt<T> for [Finite<T>] {
+    fn as_primitive_slice(&self) -> &[T::Primitive] {
+        // SAFETY: FiniteFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
+        // and `&[FiniteFloat]` entirely interchangeable in layout and lifetimes.
+        unsafe { mem::transmute::<&[Finite<T>], &[T::Primitive]>(self) }
+    }
+}
+
+/// Extension trait for converting an inclusive [`Finite`] range into an inclusive primitive
+/// range (or a `(start, end)` primitive tuple).
+pub trait FiniteRangeExt<T: FiniteFloat> {
+    /// Converts an inclusive [`Finite`] range into an inclusive primitive range.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+
+    ///
+    /// This is the reverse of [`Finite::from_primitive_range`].
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::FiniteF64;
+    /// use range_set_blaze::finite::FiniteRangeExt;
+    ///
+    /// let range = FiniteF64::new(3.0)..=FiniteF64::new(5.0);
+    /// assert_eq!(range.into_primitive_range(), 3.0..=5.0);
+    /// ```
+    #[must_use]
+    fn into_primitive_range(self) -> RangeInclusive<T::Primitive>;
+
+    /// Converts an inclusive [`Finite`] range into a `(start, end)` tuple of primitive values.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+
+    ///
+    /// Mirrors [`RangeInclusive::into_inner`] from the standard library, which unwraps a
+    /// range into its `(start, end)` tuple; this additionally converts each endpoint to its
+    /// primitive type.
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::FiniteF64;
+    /// use range_set_blaze::finite::FiniteRangeExt;
+    ///
+    /// let range = FiniteF64::new(3.0)..=FiniteF64::new(5.0);
+    /// assert_eq!(range.into_primitive_inner(), (3.0, 5.0));
+    /// ```
+    #[must_use]
+    fn into_primitive_inner(self) -> (T::Primitive, T::Primitive);
+}
+
+impl<T: FiniteFloat> FiniteRangeExt<T> for RangeInclusive<Finite<T>> {
+    fn into_primitive_range(self) -> RangeInclusive<T::Primitive> {
+        let (start, end) = self.into_primitive_inner();
+        start..=end
+    }
+
+    fn into_primitive_inner(self) -> (T::Primitive, T::Primitive) {
+        let (start, end) = self.into_inner();
+        (start.into_inner(), end.into_inner())
+    }
 }
 
 impl<T: FiniteFloat> PartialEq for Finite<T> {
@@ -589,7 +669,8 @@ impl<T: FiniteFloat> Integer for Finite<T> {
     }
 
     fn safe_len(r: &RangeInclusive<Self>) -> Self::SafeLen {
-        T::prim_safe_len(r.start().into_inner(), r.end().into_inner())
+        let (start, end) = r.clone().into_primitive_inner();
+        T::prim_safe_len(start, end)
     }
 
     fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64 {
@@ -629,9 +710,12 @@ mod tests {
 
     #[test]
     fn converts_ranges() {
-        assert_eq!(FiniteF64::range(10.0..=20.0), ff64(10.0)..=ff64(20.0));
         assert_eq!(
-            FiniteF64::ranges([10.0..=20.0, 30.0..=40.0]).collect::<Vec<_>>(),
+            FiniteF64::from_primitive_range(10.0..=20.0),
+            ff64(10.0)..=ff64(20.0)
+        );
+        assert_eq!(
+            FiniteF64::from_primitive_ranges([10.0..=20.0, 30.0..=40.0]).collect::<Vec<_>>(),
             vec![ff64(10.0)..=ff64(20.0), ff64(30.0)..=ff64(40.0)]
         );
     }

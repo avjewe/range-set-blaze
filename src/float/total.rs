@@ -12,11 +12,11 @@
 //! assert!(set.contains(TotalF64::new(3.1)));
 //! assert!(!set.contains(TotalF64::new(2.9)));
 //!
-//! let set = RangeSetBlaze::from(TotalF64::range(3.0..=5.0));
+//! let set = RangeSetBlaze::from(TotalF64::from_primitive_range(3.0..=5.0));
 //! assert!(set.contains(TotalF64::new(4.9)));
 //! assert!(!set.contains(TotalF64::new(5.1)));
 //!
-//! let set = RangeSetBlaze::from_iter(TotalF32::ranges([3.0..=5.0, 7.0..=9.0]));
+//! let set = RangeSetBlaze::from_iter(TotalF32::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
 //! assert!(set.contains(TotalF32::new(4.0)));
 //! assert!(!set.contains(TotalF32::new(6.0)));
 //!```
@@ -287,33 +287,39 @@ impl<T: TotalFloat> Total<T> {
         }
     }
 
-    /// Convenience method to convert an inclusive primitive range into an inclusive [`Total`] range.
+    /// Converts an inclusive primitive range into an inclusive [`Total`] range.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+    ///
     /// # Examples
     /// ```
     /// use range_set_blaze::{RangeSetBlaze, TotalF64};
     ///
-    /// let short = RangeSetBlaze::from(TotalF64::range(3.0..=5.0));
+    /// let short = RangeSetBlaze::from(TotalF64::from_primitive_range(3.0..=5.0));
     /// let long = RangeSetBlaze::from(TotalF64::new(3.0)..=TotalF64::new(5.0));
     /// assert_eq!(short, long);
     #[must_use]
-    pub fn range(range: RangeInclusive<T::Primitive>) -> RangeInclusive<Self> {
+    pub fn from_primitive_range(range: RangeInclusive<T::Primitive>) -> RangeInclusive<Self> {
         let (start, end) = range.into_inner();
         Self(start)..=Self(end)
     }
 
-    /// Convenience method to convert inclusive primitive ranges into inclusive [`Total`] ranges.
+    /// Converts inclusive primitive ranges into inclusive [`Total`] ranges.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+    ///
     /// # Examples
     /// ```
     /// use range_set_blaze::{RangeSetBlaze, TotalF64};
     ///
-    /// let short = RangeSetBlaze::from_iter(TotalF64::ranges([1.0..=2.0, 3.0..=4.0]));
+    /// let short = RangeSetBlaze::from_iter(TotalF64::from_primitive_ranges([1.0..=2.0, 3.0..=4.0]));
     /// let long = RangeSetBlaze::from_iter([TotalF64::new(1.0)..=TotalF64::new(2.0), TotalF64::new(3.0)..=TotalF64::new(4.0)]);
     /// assert_eq!(short, long);
-    pub fn ranges<I>(ranges: I) -> impl Iterator<Item = RangeInclusive<Self>>
+    pub fn from_primitive_ranges<I>(ranges: I) -> impl Iterator<Item = RangeInclusive<Self>>
     where
         I: IntoIterator<Item = RangeInclusive<T::Primitive>>,
     {
-        ranges.into_iter().map(Self::range)
+        ranges.into_iter().map(Self::from_primitive_range)
     }
 
     /// Convenience method to convert primitive values into ordered [`Total`] values.
@@ -333,36 +339,100 @@ impl<T: TotalFloat> Total<T> {
 
     /// Views primitive values as ordered [`Total`] values.
     ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+    ///
     /// This runs in `O(1)` and does not allocate.
     /// # Examples
     /// ```
     /// use range_set_blaze::{RangeSetBlaze, TotalF64};
     ///
-    /// let short = RangeSetBlaze::from_iter(TotalF64::slice(&[1.0, 2.0, 3.0, 4.0]));
+    /// let short = RangeSetBlaze::from_iter(TotalF64::from_primitive_slice(&[1.0, 2.0, 3.0, 4.0]));
     /// let long = RangeSetBlaze::from_iter([TotalF64::new(1.0), TotalF64::new(2.0), TotalF64::new(3.0), TotalF64::new(4.0)]);
     /// assert_eq!(short, long);
     #[must_use]
-    pub const fn slice(values: &[T::Primitive]) -> &[Self] {
+    pub const fn from_primitive_slice(values: &[T::Primitive]) -> &[Self] {
         // SAFETY: Total is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
         // and `&[Total]` entirely interchangeable in layout and lifetimes.
         unsafe { mem::transmute::<&[T::Primitive], &[Self]>(values) }
     }
 }
 
-/// View [`Total`] values as primitive values.
-///
-/// This runs in `O(1)` and does not allocate.
-/// # Examples
-/// ```
-/// use range_set_blaze::TotalF64;
-/// use range_set_blaze::total;
-///
-/// assert_eq!(&[1.0, 2.0, 3.0], total::primitive_slice(&[TotalF64::new(1.0), TotalF64::new(2.0), TotalF64::new(3.0)]))
-#[must_use]
-pub const fn primitive_slice<T: TotalFloat>(values: &[Total<T>]) -> &[T::Primitive] {
-    // SAFETY: TotalFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
-    // and `&[TotalFloat]` entirely interchangeable in layout and lifetimes.
-    unsafe { mem::transmute::<&[Total<T>], &[T::Primitive]>(values) }
+/// Extension trait for viewing a slice of [`Total`] values as primitive values.
+pub trait TotalSliceExt<T: TotalFloat> {
+    /// Views [`Total`] values as primitive values.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+    ///
+    /// This runs in `O(1)` and does not allocate.
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    /// use range_set_blaze::total::TotalSliceExt;
+    ///
+    /// let totals = [TotalF64::new(1.0), TotalF64::new(2.0), TotalF64::new(3.0)];
+    /// assert_eq!(&[1.0, 2.0, 3.0], totals.as_primitive_slice());
+    /// ```
+    fn as_primitive_slice(&self) -> &[T::Primitive];
+}
+
+impl<T: TotalFloat> TotalSliceExt<T> for [Total<T>] {
+    fn as_primitive_slice(&self) -> &[T::Primitive] {
+        // SAFETY: TotalFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
+        // and `&[TotalFloat]` entirely interchangeable in layout and lifetimes.
+        unsafe { mem::transmute::<&[Total<T>], &[T::Primitive]>(self) }
+    }
+}
+
+/// Extension trait for converting an inclusive [`Total`] range into an inclusive primitive
+/// range (or a `(start, end)` primitive tuple).
+pub trait TotalRangeExt<T: TotalFloat> {
+    /// Converts an inclusive [`Total`] range into an inclusive primitive range.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+    ///
+    /// This is the reverse of [`Total::from_primitive_range`].
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    /// use range_set_blaze::total::TotalRangeExt;
+    ///
+    /// let range = TotalF64::new(3.0)..=TotalF64::new(5.0);
+    /// assert_eq!(range.into_primitive_range(), 3.0..=5.0);
+    /// ```
+    #[must_use]
+    fn into_primitive_range(self) -> RangeInclusive<T::Primitive>;
+
+    /// Converts an inclusive [`Total`] range into a `(start, end)` tuple of primitive values.
+    ///
+    /// "Primitive" here means Rust's built-in float type (e.g. `f64`).
+    ///
+    /// Mirrors [`RangeInclusive::into_inner`] from the standard library, which unwraps a
+    /// range into its `(start, end)` tuple; this additionally converts each endpoint to its
+    /// primitive type.
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::TotalF64;
+    /// use range_set_blaze::total::TotalRangeExt;
+    ///
+    /// let range = TotalF64::new(3.0)..=TotalF64::new(5.0);
+    /// assert_eq!(range.into_primitive_inner(), (3.0, 5.0));
+    /// ```
+    #[must_use]
+    fn into_primitive_inner(self) -> (T::Primitive, T::Primitive);
+}
+
+impl<T: TotalFloat> TotalRangeExt<T> for RangeInclusive<Total<T>> {
+    fn into_primitive_range(self) -> RangeInclusive<T::Primitive> {
+        let (start, end) = self.into_primitive_inner();
+        start..=end
+    }
+
+    fn into_primitive_inner(self) -> (T::Primitive, T::Primitive) {
+        let (start, end) = self.into_inner();
+        (start.into_inner(), end.into_inner())
+    }
 }
 
 impl<T: TotalFloat> PartialEq for Total<T> {
@@ -467,7 +537,8 @@ impl<T: TotalFloat> Integer for Total<T> {
     }
 
     fn safe_len(r: &RangeInclusive<Self>) -> Self::SafeLen {
-        T::prim_safe_len(r.start().into_inner(), r.end().into_inner())
+        let (start, end) = r.clone().into_primitive_inner();
+        T::prim_safe_len(start, end)
     }
 
     fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64 {
@@ -533,9 +604,12 @@ mod tests {
 
     #[test]
     fn converts_ranges() {
-        assert_eq!(TotalF64::range(10.0..=20.0), tf64(10.0)..=tf64(20.0));
         assert_eq!(
-            TotalF64::ranges([10.0..=20.0, 30.0..=40.0]).collect::<Vec<_>>(),
+            TotalF64::from_primitive_range(10.0..=20.0),
+            tf64(10.0)..=tf64(20.0)
+        );
+        assert_eq!(
+            TotalF64::from_primitive_ranges([10.0..=20.0, 30.0..=40.0]).collect::<Vec<_>>(),
             vec![tf64(10.0)..=tf64(20.0), tf64(30.0)..=tf64(40.0)]
         );
     }

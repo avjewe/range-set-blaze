@@ -1,7 +1,8 @@
 //! TODO000: delete this scratch file and the matching .vscode/settings.json entry when done
 #![cfg(feature = "total_float_experimental")]
 use range_set_blaze::RangeSetBlaze;
-use range_set_blaze::finite::ff32;
+use range_set_blaze::finite::{FiniteRangeExt, FiniteSliceExt, ff32};
+use range_set_blaze::total::TotalSliceExt;
 use range_set_blaze::{FiniteF32, FiniteF64, TotalF32, TotalF64};
 
 /// Playground for the `from_ordered` bug: `FiniteF32` promises to only ever
@@ -150,14 +151,14 @@ fn scratch6_tiny() {
 // Every function that uses `unsafe` (transmute or otherwise) under the
 // covers. Grep for `unsafe` in src/float/{finite,total}.rs to see the
 // full list this section is tracking:
-//   - Finite::new_unchecked        (unsafe fn — direct value-invariant escape hatch)
-//   - Finite::try_new              (safe fn, built on new_unchecked)
-//   - Finite::try_from_ordered     (safe fn, built on new_unchecked)
-//   - Finite::slice_unchecked      (unsafe fn — transmute &[Primitive] -> &[Finite])
-//   - Finite::slice                (safe fn, built on slice_unchecked)
-//   - finite::primitive_slice      (safe fn — transmute &[Finite] -> &[Primitive])
-//   - Total::slice                 (safe fn — transmute &[Primitive] -> &[Total])
-//   - total::primitive_slice       (safe fn — transmute &[Total] -> &[Primitive])
+//   - Finite::new_unchecked                    (unsafe fn — direct value-invariant escape hatch)
+//   - Finite::try_new                          (safe fn, built on new_unchecked)
+//   - Finite::try_from_ordered                 (safe fn, built on new_unchecked)
+//   - Finite::from_primitive_slice_unchecked   (unsafe fn — transmute &[Primitive] -> &[Finite])
+//   - Finite::from_primitive_slice             (safe fn, built on from_primitive_slice_unchecked)
+//   - FiniteSliceExt::as_primitive_slice       (safe fn — transmute &[Finite] -> &[Primitive])
+//   - Total::from_primitive_slice              (safe fn — transmute &[Primitive] -> &[Total])
+//   - TotalSliceExt::as_primitive_slice        (safe fn — transmute &[Total] -> &[Primitive])
 // ---------------------------------------------------------------------
 
 #[test]
@@ -221,12 +222,12 @@ fn scratch10_try_new_and_try_from_ordered() {
 #[test]
 #[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch11_finite_slice_roundtrip() {
-    // `Finite::slice` validates every element (O(n)) then calls the unsafe,
-    // zero-copy `slice_unchecked` (a `mem::transmute` of `&[f64]` to
-    // `&[Finite<f64>]`, sound because `Finite` is `#[repr(transparent)]`).
+    // `Finite::from_primitive_slice` validates every element (O(n)) then calls
+    // the unsafe, zero-copy `from_primitive_slice_unchecked` (a `mem::transmute`
+    // of `&[f64]` to `&[Finite<f64>]`, sound because `Finite` is `#[repr(transparent)]`).
     let primitives = [1.0, 2.0, 3.0];
-    let finites: &[FiniteF64] = FiniteF64::slice(&primitives);
-    println!("FiniteF64::slice({primitives:?}) = {finites:?}");
+    let finites: &[FiniteF64] = FiniteF64::from_primitive_slice(&primitives);
+    println!("FiniteF64::from_primitive_slice({primitives:?}) = {finites:?}");
     assert_eq!(
         finites,
         [
@@ -240,9 +241,9 @@ fn scratch11_finite_slice_roundtrip() {
     assert_eq!(finites.as_ptr().cast::<f64>(), primitives.as_ptr());
     assert_eq!(finites.len(), primitives.len());
 
-    // The reverse view, `finite::primitive_slice`, is also just a transmute.
-    let back: &[f64] = range_set_blaze::finite::primitive_slice(finites);
-    println!("finite::primitive_slice(..) = {back:?}");
+    // The reverse view, `FiniteSliceExt::as_primitive_slice`, is also just a transmute.
+    let back: &[f64] = finites.as_primitive_slice();
+    println!("finites.as_primitive_slice() = {back:?}");
     assert_eq!(back, primitives);
     assert_eq!(back.as_ptr(), finites.as_ptr().cast::<f64>());
 }
@@ -251,42 +252,93 @@ fn scratch11_finite_slice_roundtrip() {
 #[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 #[should_panic(expected = "Finite type requires finite")]
 fn scratch12_finite_slice_rejects_bad_input() {
-    // `Finite::slice` validates before transmuting; NaN in the input panics
-    // rather than silently producing a `Finite` slice with a broken value.
-    let _ = FiniteF64::slice(&[1.0, f64::NAN, 3.0]);
+    // `Finite::from_primitive_slice` validates before transmuting; NaN in the
+    // input panics rather than silently producing a `Finite` slice with a broken value.
+    let _ = FiniteF64::from_primitive_slice(&[1.0, f64::NAN, 3.0]);
 }
 
 #[test]
 #[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch13_slice_unchecked_misuse() {
-    // `slice_unchecked` skips the validation `slice` does. Feeding it NaN
-    // (violating the safety precondition) is, again, "nonsense but not
-    // unsafe": no UB, but every `Finite` value in the returned slice is now
-    // a lie -- `is_finite()`-style reasoning downstream can no longer be
-    // trusted for this slice.
+    // `from_primitive_slice_unchecked` skips the validation `from_primitive_slice`
+    // does. Feeding it NaN (violating the safety precondition) is, again,
+    // "nonsense but not unsafe": no UB, but every `Finite` value in the
+    // returned slice is now a lie -- `is_finite()`-style reasoning downstream
+    // can no longer be trusted for this slice.
     let primitives = [1.0, f64::NAN, 3.0];
-    let finites: &[FiniteF64] = unsafe { FiniteF64::slice_unchecked(&primitives) };
-    println!("slice_unchecked({primitives:?}) = {finites:?}");
+    let finites: &[FiniteF64] = unsafe { FiniteF64::from_primitive_slice_unchecked(&primitives) };
+    println!("from_primitive_slice_unchecked({primitives:?}) = {finites:?}");
     assert!(finites[1].into_inner().is_nan());
 }
 
 #[test]
 #[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch14_total_slice_roundtrip() {
-    // `Total::slice` and `total::primitive_slice` are both *safe* functions
-    // (unlike their `Finite` counterparts) because `Total` has no value
-    // invariant to violate -- every bit pattern of the primitive, including
-    // NaN and -0.0, is a legal `Total` value. The transmute is still there
-    // under the hood, just without an unchecked/checked split.
+    // `Total::from_primitive_slice` and `TotalSliceExt::as_primitive_slice`
+    // are both *safe* functions (unlike their `Finite` counterparts) because
+    // `Total` has no value invariant to violate -- every bit pattern of the
+    // primitive, including NaN and -0.0, is a legal `Total` value. The
+    // transmute is still there under the hood, just without an
+    // unchecked/checked split.
     let primitives = [1.0f32, f32::NAN, -0.0, f32::INFINITY];
-    let totals: &[TotalF32] = TotalF32::slice(&primitives);
-    println!("TotalF32::slice({primitives:?}) = {totals:?}");
+    let totals: &[TotalF32] = TotalF32::from_primitive_slice(&primitives);
+    println!("TotalF32::from_primitive_slice({primitives:?}) = {totals:?}");
     assert_eq!(totals.as_ptr().cast::<f32>(), primitives.as_ptr());
 
-    let back: &[f32] = range_set_blaze::total::primitive_slice(totals);
-    println!("total::primitive_slice(..) = {back:?}");
+    let back: &[f32] = totals.as_primitive_slice();
+    println!("totals.as_primitive_slice() = {back:?}");
     assert_eq!(back.as_ptr(), totals.as_ptr().cast::<f32>());
     // NaN survives the round trip bit-for-bit (transmute, not a copy/parse).
     assert!(back[1].is_nan());
     assert!(back[2].is_sign_negative() && back[2] == 0.0);
+}
+
+#[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
+fn scratch15_merge_float_intervals() {
+    // A realistic use case: merge ~10 overlapping/adjacent float intervals
+    // (e.g. sensor active-windows, timestamps with tolerance) into their
+    // disjoint union, then read the merged result back out as a
+    // `Vec<RangeInclusive<f64>>` of plain primitives -- no `Finite`/`Total`
+    // types visible to the caller at either boundary.
+    //
+    // (Individual float *points* essentially never coalesce -- two floats
+    // only merge into one run if they're float-adjacent, i.e. `a.after() ==
+    // b`, not just numerically close. Intervals with real width, like these,
+    // are the case that actually benefits from `RangeSetBlaze`.)
+    let intervals: Vec<(f64, f64)> = vec![
+        (1.0, 3.0),
+        (2.5, 4.0),
+        (5.0, 6.0),
+        (5.5, 7.0),
+        (10.0, 12.0),
+        (11.0, 13.0),
+        (15.0, 15.0),
+        (20.0, 22.0),
+        (21.0, 25.0),
+        (30.0, 31.0),
+    ];
+
+    let set = RangeSetBlaze::from_iter(FiniteF64::from_primitive_ranges(
+        intervals.into_iter().map(|(start, end)| start..=end),
+    ));
+    println!("set: {set:?}");
+
+    let primitive_ranges: Vec<std::ops::RangeInclusive<f64>> = set
+        .ranges()
+        .map(FiniteRangeExt::into_primitive_range)
+        .collect();
+    println!("primitive_ranges: {primitive_ranges:?}");
+
+    assert_eq!(
+        primitive_ranges,
+        vec![
+            1.0..=4.0,
+            5.0..=7.0,
+            10.0..=13.0,
+            15.0..=15.0,
+            20.0..=25.0,
+            30.0..=31.0
+        ]
+    );
 }

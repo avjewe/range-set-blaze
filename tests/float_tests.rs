@@ -11,9 +11,9 @@ use range_set_blaze::UIntPlusOne;
 #[cfg(feature = "total_float_nightly_experimental")]
 use range_set_blaze::finite::{ff16, ff128};
 use range_set_blaze::finite::{ff32, ff64};
+use range_set_blaze::total::{TotalRangeExt, tf32, tf64};
 #[cfg(feature = "total_float_nightly_experimental")]
 use range_set_blaze::total::{tf16, tf128};
-use range_set_blaze::total::{tf32, tf64};
 #[cfg(feature = "total_float_nightly_experimental")]
 use range_set_blaze::{FiniteF16, FiniteF128, TotalF16, TotalF128};
 use range_set_blaze::{
@@ -219,18 +219,18 @@ fn float_test() {
     let _ = RangeSetBlaze::from(tf64(3.0)..=tf64(5.0));
     let _ = RangeSetBlaze::from(tf32(3.0)..=tf32(5.0));
 
-    let _ = RangeSetBlaze::from(TotalF64::range(3.0..=5.0));
-    let _ = RangeSetBlaze::from(TotalF32::range(3.0..=5.0));
+    let _ = RangeSetBlaze::from(TotalF64::from_primitive_range(3.0..=5.0));
+    let _ = RangeSetBlaze::from(TotalF32::from_primitive_range(3.0..=5.0));
 
-    let _ = RangeSetBlaze::from_iter(TotalF64::ranges([3.0..=5.0, 7.0..=9.0]));
-    let _ = RangeSetBlaze::from_iter(TotalF32::ranges([3.0..=5.0, 7.0..=9.0]));
+    let _ = RangeSetBlaze::from_iter(TotalF64::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
+    let _ = RangeSetBlaze::from_iter(TotalF32::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
 
-    let _ = RangeSetBlaze::from_iter(TotalF64::slice(&[1.0, 2.0, 3.0]));
-    let _ = RangeSetBlaze::from_iter(TotalF32::slice(&[1.0, 2.0, 3.0]));
+    let _ = RangeSetBlaze::from_iter(TotalF64::from_primitive_slice(&[1.0, 2.0, 3.0]));
+    let _ = RangeSetBlaze::from_iter(TotalF32::from_primitive_slice(&[1.0, 2.0, 3.0]));
     let _ = RangeSetBlaze::from_iter(TotalF64::values([1.0, 2.0, 3.0]));
     let _ = RangeSetBlaze::from_iter(TotalF32::values([1.0, 2.0, 3.0]));
 
-    let foo = RangeSetBlaze::from_iter(TotalF64::ranges([3.0..=5.0, 7.0..=9.0]));
+    let foo = RangeSetBlaze::from_iter(TotalF64::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
     assert!(foo.contains(tf64(3.0)));
     assert!(foo.contains(tf64(5.0)));
     assert!(foo.contains(tf64(7.0)));
@@ -291,7 +291,7 @@ fn test_inclusive_nightly() {
 fn test_floats2() {
     syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
         $(
-            let mut a = $ty::range(0.0..=0.0);
+            let mut a = $ty::from_primitive_range(0.0..=0.0);
             assert_eq!($ty::range_next_back(&mut a), Some($ty::new(0.0)));
             assert_eq!($ty::range_next(&mut a), None);
 
@@ -308,7 +308,7 @@ fn test_floats2() {
 fn test_floats2_nightly() {
     syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
         $(
-            let mut a = $ty::range(0.0..=0.0);
+            let mut a = $ty::from_primitive_range(0.0..=0.0);
             assert_eq!($ty::range_next_back(&mut a), Some($ty::new(0.0)));
             assert_eq!($ty::range_next(&mut a), None);
 
@@ -322,11 +322,11 @@ fn test_floats2_nightly() {
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_floats() {
-    let mut a = TotalF32::range(0.0..=0.0);
+    let mut a = TotalF32::from_primitive_range(0.0..=0.0);
     assert_eq!(TotalF32::range_next_back(&mut a), Some(tf32(0.0)));
     assert_eq!(TotalF32::range_next(&mut a), None);
 
-    let mut a = TotalF64::range(0.0..=0.0);
+    let mut a = TotalF64::from_primitive_range(0.0..=0.0);
     assert_eq!(TotalF64::range_next_back(&mut a), Some(tf64(0.0)));
     assert_eq!(TotalF64::range_next(&mut a), None);
 
@@ -343,7 +343,7 @@ fn test_floats() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
 fn test_floats_nightly() {
-    let mut a = TotalF16::range(0.0..=0.0);
+    let mut a = TotalF16::from_primitive_range(0.0..=0.0);
     assert_eq!(TotalF16::range_next_back(&mut a), Some(tf16(0.0)));
     assert_eq!(TotalF16::range_next(&mut a), None);
 
@@ -351,7 +351,7 @@ fn test_floats_nightly() {
     TotalF16::assign_sub_one(&mut b);
     assert_eq!(b, tf16(0.0).before());
 
-    let mut a = TotalF128::range(0.0..=0.0);
+    let mut a = TotalF128::from_primitive_range(0.0..=0.0);
     assert_eq!(TotalF128::range_next_back(&mut a), Some(tf128(0.0)));
     assert_eq!(TotalF128::range_next(&mut a), None);
 
@@ -540,8 +540,8 @@ fn total_complement_total128() {
 // `FiniteF64`'s doc comment (see `FiniteF64` / `Finite<T>`) promises values
 // "excluding NaN, -0.0, and infinities." `new()`/`try_new()` enforce that via
 // `T::is_finite` + `T::normalize`; `range()`, `ranges()`, and `values()` now
-// route through `new()` so they enforce the same contract. `slice()` validates
-// (panicking on bad input) and delegates to the `unsafe` `slice_unchecked()`
+// route through `new()` so they enforce the same contract. `from_primitive_slice()` validates
+// (panicking on bad input) and delegates to the `unsafe` `from_primitive_slice_unchecked()`
 // for the actual zero-copy view, which — like `new_unchecked()` — requires the
 // caller to already guarantee the invariant.
 // ============================================================================
@@ -550,14 +550,14 @@ fn total_complement_total128() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[should_panic(expected = "Finite type requires a finite value")]
 fn finite_range_rejects_nan_start() {
-    let _ = FiniteF64::range(f64::NAN..=1.0);
+    let _ = FiniteF64::from_primitive_range(f64::NAN..=1.0);
 }
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[should_panic(expected = "Finite type requires a finite value")]
 fn finite_range_rejects_infinite_end() {
-    let _ = FiniteF64::range(1.0..=f64::INFINITY);
+    let _ = FiniteF64::from_primitive_range(1.0..=f64::INFINITY);
 }
 
 #[test]
@@ -581,23 +581,23 @@ fn finite_values_normalizes_negative_zero() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
 fn finite_slice_rejects_nan() {
-    let _ = FiniteF64::slice(&[f64::NAN]);
+    let _ = FiniteF64::from_primitive_slice(&[f64::NAN]);
 }
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
 fn finite_slice_rejects_negative_zero() {
-    let _ = FiniteF64::slice(&[-0.0]);
+    let _ = FiniteF64::from_primitive_slice(&[-0.0]);
 }
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn finite_slice_unchecked_bypasses_validation() {
     // SAFETY: deliberately violates Finite's invariant to document exactly what
-    // `slice_unchecked` allows through when its safety precondition is broken —
+    // `from_primitive_slice_unchecked` allows through when its safety precondition is broken —
     // this is the documented "logic error, not UB" escape hatch from the spec.
-    let values = unsafe { FiniteF64::slice_unchecked(&[f64::NAN]) };
+    let values = unsafe { FiniteF64::from_primitive_slice_unchecked(&[f64::NAN]) };
     assert!(values[0].into_inner().is_nan());
 }
 
@@ -612,7 +612,7 @@ fn finite_slice_unchecked_bypasses_validation() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[should_panic(expected = "Finite type requires a finite value")]
 fn finite_range_rejects_nan_start_f32() {
-    let _ = FiniteF32::range(f32::NAN..=1.0);
+    let _ = FiniteF32::from_primitive_range(f32::NAN..=1.0);
 }
 
 #[test]
@@ -628,14 +628,14 @@ fn finite_values_normalizes_negative_zero_f32() {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
 fn finite_slice_rejects_nan_f32() {
-    let _ = FiniteF32::slice(&[f32::NAN]);
+    let _ = FiniteF32::from_primitive_slice(&[f32::NAN]);
 }
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn finite_slice_unchecked_bypasses_validation_f32() {
     // SAFETY: deliberately violates Finite's invariant, see the f64 variant above.
-    let values = unsafe { FiniteF32::slice_unchecked(&[f32::NAN]) };
+    let values = unsafe { FiniteF32::from_primitive_slice_unchecked(&[f32::NAN]) };
     assert!(values[0].into_inner().is_nan());
 }
 
@@ -644,7 +644,7 @@ fn finite_slice_unchecked_bypasses_validation_f32() {
 #[cfg(feature = "total_float_nightly_experimental")]
 #[should_panic(expected = "Finite type requires a finite value")]
 fn finite_range_rejects_nan_start_f128() {
-    let _ = FiniteF128::range(f128::NAN..=1.0);
+    let _ = FiniteF128::from_primitive_range(f128::NAN..=1.0);
 }
 
 #[test]
@@ -662,7 +662,7 @@ fn finite_values_normalizes_negative_zero_f128() {
 #[cfg(feature = "total_float_nightly_experimental")]
 #[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
 fn finite_slice_rejects_nan_f128() {
-    let _ = FiniteF128::slice(&[f128::NAN]);
+    let _ = FiniteF128::from_primitive_slice(&[f128::NAN]);
 }
 
 #[test]
@@ -670,7 +670,7 @@ fn finite_slice_rejects_nan_f128() {
 #[cfg(feature = "total_float_nightly_experimental")]
 fn finite_slice_unchecked_bypasses_validation_f128() {
     // SAFETY: deliberately violates Finite's invariant, see the f64 variant above.
-    let values = unsafe { FiniteF128::slice_unchecked(&[f128::NAN]) };
+    let values = unsafe { FiniteF128::from_primitive_slice_unchecked(&[f128::NAN]) };
     assert!(values[0].into_inner().is_nan());
 }
 
@@ -714,7 +714,7 @@ fn finite_f16_exhaustive_bit_patterns_via_constructors() {
                 ));
             }
 
-            let via_range = *FiniteF16::range(x..=x).start();
+            let via_range = *FiniteF16::from_primitive_range(x..=x).start();
             if via_range.into_inner() != x {
                 failures.push(format!(
                     "range(): bits {bits:#06x} ({x}) did not round-trip, got {:?}",
@@ -722,7 +722,7 @@ fn finite_f16_exhaustive_bit_patterns_via_constructors() {
                 ));
             }
 
-            let via_slice = FiniteF16::slice(core::slice::from_ref(&x))[0];
+            let via_slice = FiniteF16::from_primitive_slice(core::slice::from_ref(&x))[0];
             if via_slice.into_inner() != x {
                 failures.push(format!(
                     "slice(): bits {bits:#06x} ({x}) did not round-trip, got {:?}",
@@ -735,12 +735,16 @@ fn finite_f16_exhaustive_bit_patterns_via_constructors() {
                 failures.push(format!("values(): bits {bits:#06x} did not normalize -0.0"));
             }
 
-            let via_range = *FiniteF16::range(x..=x).start();
+            let via_range = *FiniteF16::from_primitive_range(x..=x).start();
             if via_range.into_inner().is_sign_negative() {
                 failures.push(format!("range(): bits {bits:#06x} did not normalize -0.0"));
             }
 
-            if std::panic::catch_unwind(|| FiniteF16::slice(core::slice::from_ref(&x))).is_ok() {
+            if std::panic::catch_unwind(|| {
+                FiniteF16::from_primitive_slice(core::slice::from_ref(&x))
+            })
+            .is_ok()
+            {
                 failures.push(format!(
                     "slice(): bits {bits:#06x} (-0.0) should have panicked, can't normalize a view"
                 ));
@@ -752,12 +756,16 @@ fn finite_f16_exhaustive_bit_patterns_via_constructors() {
                     "values(): bits {bits:#06x} ({x}) should have panicked"
                 ));
             }
-            if std::panic::catch_unwind(|| FiniteF16::range(x..=x)).is_ok() {
+            if std::panic::catch_unwind(|| FiniteF16::from_primitive_range(x..=x)).is_ok() {
                 failures.push(format!(
                     "range(): bits {bits:#06x} ({x}) should have panicked"
                 ));
             }
-            if std::panic::catch_unwind(|| FiniteF16::slice(core::slice::from_ref(&x))).is_ok() {
+            if std::panic::catch_unwind(|| {
+                FiniteF16::from_primitive_slice(core::slice::from_ref(&x))
+            })
+            .is_ok()
+            {
                 failures.push(format!(
                     "slice(): bits {bits:#06x} ({x}) should have panicked"
                 ));
@@ -925,7 +933,7 @@ fn tf64_categories() {
     ]);
 
     for (range, category) in category_map.range_values() {
-        let (start, end) = (range.start().into_inner(), range.end().into_inner());
+        let (start, end) = range.into_primitive_inner();
         println!(
             "{start:e} (0x{:016x}) ..= {end:e} (0x{:016x}) -> {category:?}",
             start.to_bits(),

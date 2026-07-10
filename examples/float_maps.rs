@@ -21,7 +21,10 @@
 //! dispatch table.
 
 use core::f32::consts::PI;
-use range_set_blaze::{FiniteF32, Integer, RangeMapBlaze, RangeSetBlaze, finite::ff32};
+use range_set_blaze::{
+    FiniteF32, Integer, RangeMapBlaze, RangeSetBlaze,
+    finite::{FiniteRangeExt, ff32},
+};
 use rayon::prelude::*;
 use std::{ops::BitOr, thread::available_parallelism};
 
@@ -91,7 +94,7 @@ fn main() {
          (target absolute error: {TARGET_ERROR}; taylor/std may still disagree in the last printed digit -- display-rounding, not a bug)"
     );
     for (range, n) in term_map.range_values() {
-        let (start, end) = (range.start().into_inner(), range.end().into_inner());
+        let (start, end) = range.into_primitive_inner();
         let mid = f32::midpoint(start, end);
         let taylor = taylor_cos(mid, *n);
         let std = mid.cos();
