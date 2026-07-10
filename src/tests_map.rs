@@ -204,7 +204,7 @@ fn test_coverage_9() {
 fn test_eq_priority() {
     let a = Priority::new((1..=2, &"a"), 1);
     let b = Priority::new((1..=2, &"a"), 0);
-    assert!(a != b);
+    assert_ne!(a, b);
 }
 
 #[allow(clippy::items_after_statements)]

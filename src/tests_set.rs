@@ -35,7 +35,7 @@ fn demo_f1() {
     //     range_set_blaze.len()
     // );
 
-    assert!(range_set_blaze.len_slow() == range_set_blaze.len());
+    assert_eq!(range_set_blaze.len_slow(), range_set_blaze.len());
 }
 
 #[test]
