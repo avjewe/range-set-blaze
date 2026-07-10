@@ -181,28 +181,6 @@ impl<T: TotalFloat> Total<T> {
         self.0
     }
 
-    /// Transforms the float bits into the monotonically ordered Ordered space used by `total_cmp`.
-    /// # Examples
-    /// ```
-    /// use range_set_blaze::TotalF64;
-    ///
-    /// assert_eq!(2.0 < 3.0, TotalF64::new(2.0).to_ordered() < TotalF64::new(3.0).to_ordered());
-    /// ```
-    pub fn to_ordered(self) -> T::Ordered {
-        T::to_ordered(self.0)
-    }
-
-    /// Transforms the ordered Ordered space back into standard float bits.
-    /// # Examples
-    /// ```
-    /// use range_set_blaze::TotalF64;
-    ///
-    /// assert_eq!(TotalF64::from_ordered(TotalF64::new(42.0).to_ordered()).into_inner(), 42.0);
-    /// ```
-    pub fn from_ordered(x: T::Ordered) -> Self {
-        Self(T::from_ordered(x))
-    }
-
     /// Returns the next float in total order.
     ///
     /// # Examples
@@ -219,8 +197,8 @@ impl<T: TotalFloat> Total<T> {
     #[must_use]
     pub fn after(self) -> Self {
         debug_assert!(self != Self::MAX, "after() called on maximum value");
-        let ordered = self.to_ordered();
-        Self::from_ordered(ordered.wrapping_add(&T::Ordered::one()))
+        let ordered = T::to_ordered(self.0);
+        Self(T::from_ordered(ordered.wrapping_add(&T::Ordered::one())))
     }
 
     /// Returns the previous float in total order.
@@ -239,8 +217,8 @@ impl<T: TotalFloat> Total<T> {
     #[must_use]
     pub fn before(self) -> Self {
         debug_assert!(self != Self::MIN, "before() called on minimum value");
-        let ordered = self.to_ordered();
-        Self::from_ordered(ordered.wrapping_sub(&T::Ordered::one()))
+        let ordered = T::to_ordered(self.0);
+        Self(T::from_ordered(ordered.wrapping_sub(&T::Ordered::one())))
     }
 
     /// Returns the next float.

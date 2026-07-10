@@ -199,7 +199,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// Creates a new [`Finite`] from a primitive float without validating it.
     ///
     /// This is the unchecked building block every validating constructor in this module
-    /// (`new`, `try_new`, `from_ordered`, `from_primitive_range`, `values`,
+    /// (`new`, `try_new`, `from_primitive_range`, `values`,
     /// `from_primitive_slice`, ...) is defined in terms
     /// of. Prefer those; only reach for this when you have already independently established
     /// the safety precondition below and need to skip the redundant check.
@@ -265,56 +265,6 @@ impl<T: FiniteFloat> Finite<T> {
     #[must_use]
     pub const fn into_inner(self) -> T {
         self.0
-    }
-
-    /// Transforms the float bits into the monotonically ordered Ordered space used by `total_cmp`.
-    /// # Examples
-    /// ```
-    /// use range_set_blaze::FiniteF64;
-    ///
-    /// assert_eq!(2.0 < 3.0, FiniteF64::new(2.0).to_ordered() < FiniteF64::new(3.0).to_ordered());
-    /// ```
-    pub fn to_ordered(self) -> T::Ordered {
-        T::to_ordered(self.0)
-    }
-
-    /// Transforms the ordered Ordered space back into standard float bits.
-    /// # Examples
-    /// ```
-    /// use range_set_blaze::FiniteF64;
-    ///
-    /// assert_eq!(FiniteF64::from_ordered(FiniteF64::new(42.0).to_ordered()).into_inner(), 42.0);
-    /// ```
-    /// # Panics
-    ///
-    /// Panics if `x` is outside the finite range (i.e. would decode to NaN or +/-infinity).
-    pub fn from_ordered(x: T::Ordered) -> Self {
-        Self::try_from_ordered(x)
-            .expect("Finite type requires an ordered value within the finite range")
-    }
-
-    /// Transforms the ordered Ordered space back into standard float bits.
-    ///
-    /// Returns `None` if `x` is outside the finite range (i.e. would decode to NaN or
-    /// +/-infinity). The one in-range value that decodes to `-0.0` is normalized to `+0.0`.
-    ///
-    /// # Examples
-    /// ```
-    /// use range_set_blaze::FiniteF64;
-    ///
-    /// assert_eq!(
-    ///     FiniteF64::try_from_ordered(FiniteF64::new(42.0).to_ordered()),
-    ///     Some(FiniteF64::new(42.0))
-    /// );
-    /// ```
-    #[must_use]
-    pub fn try_from_ordered(x: T::Ordered) -> Option<Self> {
-        if x < T::MIN_ORDERED || x > T::MAX_ORDERED {
-            return None;
-        }
-        // SAFETY: the bounds check above rules out any ordered position that would decode to
-        // NaN or +/-infinity, and `T::normalize` canonicalizes the one remaining -0.0 position.
-        Some(unsafe { Self::new_unchecked(T::normalize(T::from_ordered(x))) })
     }
 
     /// Returns the next float, in total order.

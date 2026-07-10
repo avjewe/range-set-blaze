@@ -3,49 +3,16 @@
 use range_set_blaze::RangeSetBlaze;
 use range_set_blaze::finite::{FiniteRangeExt, FiniteSliceExt, ff32};
 use range_set_blaze::total::TotalSliceExt;
-use range_set_blaze::{FiniteF32, FiniteF64, TotalF32, TotalF64};
+use range_set_blaze::{FiniteF32, FiniteF64, TotalF32};
 
-/// Playground for the `from_ordered` bug: `FiniteF32` promises to only ever
-/// hold finite, non-NaN, non-negative-zero values -- `new`/`try_new` enforce
-/// that. But `from_ordered` is public, infallible, and does zero checking.
-/// `Ordered` is just `i32` for f32, and `TotalF32` (which has no finiteness
-/// restriction) uses the exact same `Ordered` encoding -- so we can borrow a
-/// `TotalF32` to manufacture "the Ordered position of NaN/-0.0/+Infinity"
-/// and hand it straight to `FiniteF32::from_ordered` to see what comes out.
 #[test]
 #[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
-fn scratch7_from_ordered_bug() {
-    let nan_ordered = TotalF32::new(f32::NAN).to_ordered();
-    let broken = FiniteF32::from_ordered(nan_ordered);
-    println!("FiniteF32::from_ordered({nan_ordered}) = {broken:?} -- supposed to be impossible!");
+fn scratch7() {
     println!(
-        "  .into_inner().is_nan() = {}",
-        broken.into_inner().is_nan()
-    );
-
-    let neg_inf_ordered = TotalF32::new(f32::NEG_INFINITY).to_ordered();
-    let broken_inf = FiniteF32::from_ordered(neg_inf_ordered);
-    println!(
-        "FiniteF32::from_ordered({neg_inf_ordered}) = {broken_inf:?} -- also supposed to be impossible!"
-    );
-
-    let neg_zero_ordered = TotalF32::new(-0.0).to_ordered();
-    let broken_neg_zero = FiniteF32::from_ordered(neg_zero_ordered);
-    println!(
-        "FiniteF32::from_ordered({neg_zero_ordered}) = {broken_neg_zero:?}, is_sign_negative = {}",
-        broken_neg_zero.into_inner().is_sign_negative()
-    );
-
-    // Compare: the *safe* constructor for the same underlying value refuses
-    // NaN outright and normalizes -0.0 away, exactly as documented.
-    println!(
-        "for reference, FiniteF32::try_new(f32::NAN) = {:?}",
+        "FiniteF32::try_new(f32::NAN) = {:?}",
         FiniteF32::try_new(f32::NAN)
     );
-    println!(
-        "for reference, FiniteF32::new(-0.0) = {:?} (normalized to +0.0)",
-        FiniteF32::new(-0.0)
-    );
+    println!("FiniteF32::new(-0.0) = {:?}", FiniteF32::new(-0.0));
 }
 
 #[test]
@@ -153,7 +120,6 @@ fn scratch6_tiny() {
 // full list this section is tracking:
 //   - Finite::new_unchecked                    (unsafe fn — direct value-invariant escape hatch)
 //   - Finite::try_new                          (safe fn, built on new_unchecked)
-//   - Finite::try_from_ordered                 (safe fn, built on new_unchecked)
 //   - Finite::from_primitive_slice_unchecked   (unsafe fn — transmute &[Primitive] -> &[Finite])
 //   - Finite::from_primitive_slice             (safe fn, built on from_primitive_slice_unchecked)
 //   - FiniteSliceExt::as_primitive_slice       (safe fn — transmute &[Finite] -> &[Primitive])
@@ -195,28 +161,12 @@ fn scratch9_new_unchecked_misuse() {
 
 #[test]
 #[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
-fn scratch10_try_new_and_try_from_ordered() {
-    // `try_new` and `try_from_ordered` are safe functions, but each calls
-    // `new_unchecked` internally once it has independently established the
-    // safety precondition (finiteness / in-range ordered position).
+fn scratch10_try_new() {
+    // `try_new` is safe because it independently establishes finiteness before
+    // calling `new_unchecked` internally.
     assert_eq!(FiniteF64::try_new(1.5), Some(FiniteF64::new(1.5)));
     assert_eq!(FiniteF64::try_new(f64::NAN), None);
     assert_eq!(FiniteF64::try_new(f64::INFINITY), None);
-
-    let ordered = FiniteF64::new(1.5).to_ordered();
-    assert_eq!(
-        FiniteF64::try_from_ordered(ordered),
-        Some(FiniteF64::new(1.5))
-    );
-
-    // Out-of-range ordered positions (decoding to NaN/infinity) are rejected
-    // rather than handed to `new_unchecked`.
-    let nan_ordered = TotalF64::new(f64::NAN).to_ordered();
-    println!(
-        "try_from_ordered(nan_ordered) = {:?} (vs. from_ordered, which panics)",
-        FiniteF64::try_from_ordered(nan_ordered)
-    );
-    assert_eq!(FiniteF64::try_from_ordered(nan_ordered), None);
 }
 
 #[test]
