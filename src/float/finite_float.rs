@@ -16,8 +16,18 @@ use super::total_float::{from_ordered_32, from_ordered_64, to_ordered_32, to_ord
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 use num_traits::{One, Zero};
 
-/// Minimum scaffolding necessary to implement Total and Finite for a floating point type.
-pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
+mod private {
+    pub trait Sealed {}
+}
+
+/// Internal implementation trait for the supported primitive finite float types.
+///
+/// This trait is sealed because its `SafeLen` and conversion methods have semantic invariants
+/// that cannot be expressed by Rust's trait bounds. Use [`Finite`](super::finite::Finite) rather
+/// than implementing this trait directly.
+pub trait FiniteFloat:
+    private::Sealed + Default + Copy + Clone + Debug + Send + Sync + 'static
+{
     /// The result of `to_bits()` on the wrapped type, e.g. u64
     type Bits: Copy + Eq + Hash + Send + Sync + Debug;
     /// The intermediate type used for `total_cmp` comparison, e.g. i64
@@ -223,6 +233,13 @@ macro_rules! impl_finite_ops {
         }
     };
 }
+
+impl private::Sealed for f64 {}
+impl private::Sealed for f32 {}
+#[cfg(feature = "total_float_nightly_experimental")]
+impl private::Sealed for f16 {}
+#[cfg(feature = "total_float_nightly_experimental")]
+impl private::Sealed for f128 {}
 
 impl FiniteFloat for f64 {
     type Bits = u64;
