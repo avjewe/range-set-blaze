@@ -2,11 +2,11 @@
 //!
 //! Ordering and other semantics are as per `total_cmp`.\
 //! Every distinct bit pattern is a separate valid value, even though quite a few of them are NaN.\
-//! For example, in a `TotalF32` all 16 million different NAN values are distinct from each other.
+//! For example, in a `TotalF32` all 16 million different NaN values are distinct from each other.
 //!
 //! Enable with `total_float_experimental` (stable, `TotalF32`/`TotalF64`) and
 //! `total_float_nightly_experimental` (nightly, adds `TotalF16`/`TotalF128`).
-//!```
+//! ```
 //! use range_set_blaze::{RangeSetBlaze, TotalF64, TotalF32};
 //! let set = RangeSetBlaze::from_iter([TotalF64::new(3.0)..=TotalF64::new(5.0)]);
 //! assert!(set.contains(TotalF64::new(3.1)));
@@ -19,7 +19,7 @@
 //! let set = RangeSetBlaze::from_iter(TotalF32::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
 //! assert!(set.contains(TotalF32::new(4.0)));
 //! assert!(!set.contains(TotalF32::new(6.0)));
-//!```
+//! ```
 
 use super::total_float::TotalFloat;
 use crate::Integer;
@@ -80,13 +80,13 @@ pub const fn tf128(x: f128) -> TotalF128 {
 /// ```bash
 /// cargo add range-set-blaze --features "total_float_experimental"
 /// ```
-/// That provides the `Total32` and `Total64` types.
+/// That provides the `TotalF32` and `TotalF64` types.
 ///
 /// If you're building with nightly, you can instead use the `total_float_nightly_experimental` feature.
 /// ```bash
 /// cargo add range-set-blaze --features "total_float_nightly_experimental"
 /// ```
-/// To also use the `Total16` and `Total128` types.
+/// To also use the `TotalF16` and `TotalF128` types.
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Total<T: TotalFloat>(T);
@@ -105,7 +105,7 @@ impl<T: TotalFloat> Total<T> {
     pub const MIN: Self = Self(T::MIN);
 
     /// The maximum value that can be represented by the type.
-    /// I.e., the smallest possible value according to `total_cmp`\
+    /// I.e., the largest possible value according to `total_cmp`\
     /// Maps directly to [`crate::Integer::max_value()`]
     ///
     /// # Examples
@@ -270,6 +270,7 @@ impl<T: TotalFloat> Total<T> {
     /// let short = RangeSetBlaze::from(TotalF64::from_primitive_range(3.0..=5.0));
     /// let long = RangeSetBlaze::from(TotalF64::new(3.0)..=TotalF64::new(5.0));
     /// assert_eq!(short, long);
+    /// ```
     #[must_use]
     pub fn from_primitive_range(range: RangeInclusive<T>) -> RangeInclusive<Self> {
         let (start, end) = range.into_inner();
@@ -287,6 +288,7 @@ impl<T: TotalFloat> Total<T> {
     /// let short = RangeSetBlaze::from_iter(TotalF64::from_primitive_ranges([1.0..=2.0, 3.0..=4.0]));
     /// let long = RangeSetBlaze::from_iter([TotalF64::new(1.0)..=TotalF64::new(2.0), TotalF64::new(3.0)..=TotalF64::new(4.0)]);
     /// assert_eq!(short, long);
+    /// ```
     pub fn from_primitive_ranges<I>(ranges: I) -> impl Iterator<Item = RangeInclusive<Self>>
     where
         I: IntoIterator<Item = RangeInclusive<T>>,
@@ -302,6 +304,7 @@ impl<T: TotalFloat> Total<T> {
     /// let short = RangeSetBlaze::from_iter(TotalF64::values([1.0, 2.0, 3.0, 4.0]));
     /// let long = RangeSetBlaze::from_iter([TotalF64::new(1.0), TotalF64::new(2.0), TotalF64::new(3.0), TotalF64::new(4.0)]);
     /// assert_eq!(short, long);
+    /// ```
     pub fn values<I>(values: I) -> impl Iterator<Item = Self>
     where
         I: IntoIterator<Item = T>,
@@ -321,6 +324,7 @@ impl<T: TotalFloat> Total<T> {
     /// let short = RangeSetBlaze::from_iter(TotalF64::from_primitive_slice(&[1.0, 2.0, 3.0, 4.0]));
     /// let long = RangeSetBlaze::from_iter([TotalF64::new(1.0), TotalF64::new(2.0), TotalF64::new(3.0), TotalF64::new(4.0)]);
     /// assert_eq!(short, long);
+    /// ```
     #[must_use]
     pub const fn from_primitive_slice(values: &[T]) -> &[Self] {
         // SAFETY: Total is #[repr(transparent)] over T, making `&[T]`
@@ -349,8 +353,8 @@ pub trait TotalSliceExt<T: TotalFloat> {
 
 impl<T: TotalFloat> TotalSliceExt<T> for [Total<T>] {
     fn as_primitive_slice(&self) -> &[T] {
-        // SAFETY: TotalFloat is #[repr(transparent)] over T, making `&[T]`
-        // and `&[TotalFloat]` entirely interchangeable in layout and lifetimes.
+        // SAFETY: Total<T> is #[repr(transparent)] over T, making `&[T]`
+        // and `&[Total<T>]` entirely interchangeable in layout and lifetimes.
         unsafe { from_raw_parts(self.as_ptr().cast::<T>(), self.len()) }
     }
 }
@@ -464,7 +468,7 @@ impl<T: TotalFloat> Integer for Total<T> {
         if range.is_empty() {
             None
         } else if range.start() == range.end() && *range.start() == Self::MAX {
-            // This is cheating, but I think it still fulfills the contract
+            // Preserve the exhausted range sentinel without calling `after()` on MAX.
             let next = *range.start();
             *range = next..=range.end().before();
             Some(next)
@@ -480,7 +484,7 @@ impl<T: TotalFloat> Integer for Total<T> {
         if range.is_empty() {
             None
         } else if range.start() == range.end() && *range.start() == Self::MIN {
-            // This is cheating, but I think it still fulfills the contract
+            // Preserve the exhausted range sentinel without calling `before()` on MIN.
             let last = *range.end();
             *range = last.after()..=last;
             Some(last)
@@ -533,6 +537,9 @@ impl<T: TotalFloat> Integer for Total<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::float::total_float::{
+        from_ordered_32, from_ordered_64, to_ordered_32, to_ordered_64,
+    };
     use std::collections::hash_map::DefaultHasher;
     use std::vec;
     use std::vec::Vec;
@@ -598,12 +605,79 @@ mod tests {
     }
 
     #[test]
-    fn after_and_before_wrap() {
-        // These should be true in release mode, but panic in debug as expected
-        // assert_eq!(TotalF64::MAX.after(), TotalF64::MIN);
-        // assert_eq!(TotalF64::MIN.before(), TotalF64::MAX);
+    fn checked_after_and_before_are_not_wrapping() {
         assert_eq!(TotalF64::MAX.checked_after(), None);
         assert_eq!(TotalF64::MIN.checked_before(), None);
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "after() called on maximum value")]
+    fn total_after_panics_at_max_in_debug() {
+        let _ = TotalF64::MAX.after();
+    }
+
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn total_after_wraps_at_max_in_release() {
+        assert_eq!(TotalF64::MAX.after(), TotalF64::MIN);
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "before() called on minimum value")]
+    fn total_before_panics_at_min_in_debug() {
+        let _ = TotalF64::MIN.before();
+    }
+
+    #[test]
+    #[cfg(not(debug_assertions))]
+    fn total_before_wraps_at_min_in_release() {
+        assert_eq!(TotalF64::MIN.before(), TotalF64::MAX);
+    }
+
+    #[test]
+    fn stable_ordered_round_trips() {
+        let edge_f64 = [
+            0,
+            1,
+            u64::MAX,
+            0x7ff0_0000_0000_0000,
+            0xfff0_0000_0000_0000,
+            0x7ff8_0000_0000_0001,
+            0xfff8_0000_0000_0001,
+        ];
+        for bits in edge_f64 {
+            let value = f64::from_bits(bits);
+            assert_eq!(from_ordered_64(to_ordered_64(value)).to_bits(), bits);
+        }
+
+        let edge_f32 = [
+            0,
+            1,
+            u32::MAX,
+            0x7f80_0000,
+            0xff80_0000,
+            0x7fc0_0001,
+            0xffc0_0001,
+        ];
+        for bits in edge_f32 {
+            let value = f32::from_bits(bits);
+            assert_eq!(from_ordered_32(to_ordered_32(value)).to_bits(), bits);
+        }
+
+        let mut state = 0x9e37_79b9_u64;
+        for _ in 0..10_000 {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1);
+            let value = f64::from_bits(state);
+            assert_eq!(from_ordered_64(to_ordered_64(value)).to_bits(), state);
+            let bytes = state.to_le_bytes();
+            let bits = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+            let value = f32::from_bits(bits);
+            assert_eq!(from_ordered_32(to_ordered_32(value)).to_bits(), bits);
+        }
     }
 
     #[test]

@@ -62,7 +62,7 @@ pub const fn ff128(x: f128) -> FiniteF128 {
 // eligible methods const, then have these shorthands call Finite::new directly. That will also
 // let their negative-zero normalization share `FiniteFloat::normalize` with runtime paths.
 macro_rules! finite_const_constructor {
-    ($name:ident, $primitive:ty, $finite:ty, $bits:ty, $exponent_mask:expr) => {
+    ($name:ident, $primitive:ty, $finite:ty, $exponent_mask:expr) => {
         const fn $name(x: $primitive) -> $finite {
             let bits = x.to_bits();
             assert!(
@@ -79,16 +79,15 @@ macro_rules! finite_const_constructor {
     };
 }
 
-finite_const_constructor!(finite_f64, f64, FiniteF64, u64, 0x7ff0_0000_0000_0000);
-finite_const_constructor!(finite_f32, f32, FiniteF32, u32, 0x7f80_0000);
+finite_const_constructor!(finite_f64, f64, FiniteF64, 0x7ff0_0000_0000_0000);
+finite_const_constructor!(finite_f32, f32, FiniteF32, 0x7f80_0000);
 #[cfg(feature = "total_float_nightly_experimental")]
-finite_const_constructor!(finite_f16, f16, FiniteF16, u16, 0x7c00);
+finite_const_constructor!(finite_f16, f16, FiniteF16, 0x7c00);
 #[cfg(feature = "total_float_nightly_experimental")]
 finite_const_constructor!(
     finite_f128,
     f128,
     FiniteF128,
-    u128,
     0x7fff_0000_0000_0000_0000_0000_0000_0000
 );
 
@@ -118,13 +117,13 @@ finite_const_constructor!(
 /// ```bash
 /// cargo add range-set-blaze --features "total_float_experimental"
 /// ```
-/// That provides the `Finite32` and `Finite64` types.
+/// That provides the `FiniteF32` and `FiniteF64` types.
 ///
 /// If you're building with nightly, you can instead use the `total_float_nightly_experimental` feature.
 /// ```bash
 /// cargo add range-set-blaze --features "total_float_nightly_experimental"
 /// ```
-/// To also use the `Finite16` and `Finite128` types.
+/// To also use the `FiniteF16` and `FiniteF128` types.
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Finite<T: FiniteFloat>(T);
@@ -153,7 +152,7 @@ impl<T: FiniteFloat> Finite<T> {
     pub const MAX: Self = Self(T::MAX);
 
     /// The maximum possible size of a range, i.e. the size if `[MIN..=MAX]`
-    /// For Finite types, this is a strange number, because there are a lot of NAN values.
+    /// For Finite types, this is a strange number because there are excluded NaN values.
     ///
     /// # Examples
     /// ```
@@ -386,6 +385,10 @@ impl<T: FiniteFloat> Finite<T> {
     /// let short = RangeSetBlaze::from_iter(FiniteF64::from_primitive_ranges([1.0..=2.0, 3.0..=4.0]));
     /// let long = RangeSetBlaze::from_iter([FiniteF64::new(1.0)..=FiniteF64::new(2.0), FiniteF64::new(3.0)..=FiniteF64::new(4.0)]);
     /// assert_eq!(short, long);
+    /// ```
+    /// # Panics
+    ///
+    /// Panics when the returned iterator is consumed if any range endpoint is not finite.
     pub fn from_primitive_ranges<I>(ranges: I) -> impl Iterator<Item = RangeInclusive<Self>>
     where
         I: IntoIterator<Item = RangeInclusive<T>>,
@@ -493,8 +496,8 @@ pub trait FiniteSliceExt<T: FiniteFloat> {
 
 impl<T: FiniteFloat> FiniteSliceExt<T> for [Finite<T>] {
     fn as_primitive_slice(&self) -> &[T] {
-        // SAFETY: FiniteFloat is #[repr(transparent)] over T, making `&[T]`
-        // and `&[FiniteFloat]` entirely interchangeable in layout and lifetimes.
+        // SAFETY: Finite<T> is #[repr(transparent)] over T, making `&[T]`
+        // and `&[Finite<T>]` entirely interchangeable in layout and lifetimes.
         unsafe { from_raw_parts(self.as_ptr().cast::<T>(), self.len()) }
     }
 }
@@ -610,7 +613,7 @@ impl<T: FiniteFloat> Integer for Finite<T> {
         if range.is_empty() {
             None
         } else if range.start() == range.end() && *range.start() == Self::MAX {
-            // This is cheating, but I think it still fulfills the contract
+            // Preserve the exhausted range sentinel without calling `after()` on MAX.
             let next = *range.start();
             *range = next..=range.end().before();
             Some(next)
@@ -626,7 +629,7 @@ impl<T: FiniteFloat> Integer for Finite<T> {
         if range.is_empty() {
             None
         } else if range.start() == range.end() && *range.start() == Self::MIN {
-            // This is cheating, but I think it still fulfills the contract
+            // Preserve the exhausted range sentinel without calling `before()` on MIN.
             let last = *range.end();
             *range = last.after()..=last;
             Some(last)
@@ -721,6 +724,12 @@ mod tests {
     fn after_and_before_panic_at_boundaries_in_all_build_modes() {
         assert_eq!(FiniteF64::MAX.checked_after(), None);
         assert_eq!(FiniteF64::MIN.checked_before(), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "b must be in range 1..=max_len")]
+    fn finite_endpoint_offset_cannot_leave_domain() {
+        let _ = FiniteF32::MAX.inclusive_end_from_start(2);
     }
 
     #[test]

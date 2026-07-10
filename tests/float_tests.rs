@@ -23,7 +23,7 @@ use syntactic_for::syntactic_for;
 use wasm_bindgen_test::*;
 wasm_bindgen_test_configure!(run_in_browser);
 
-const CONST_FINITE_F32: FiniteF32 = ff32(1.0);
+const CONST_FINITE_F32: FiniteF32 = ff32(-0.0);
 const CONST_FINITE_F64: FiniteF64 = ff64(-0.0);
 #[cfg(feature = "total_float_nightly_experimental")]
 const CONST_FINITE_F16: FiniteF16 = ff16(1.0);
@@ -35,8 +35,10 @@ const BIG_ZERO: UIntPlusOne<u128> = UIntPlusOne::<u128>::UInt(0);
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn finite_shorthands_are_const() {
-    assert_eq!(CONST_FINITE_F32, ff32(1.0));
+    assert_eq!(CONST_FINITE_F32, ff32(0.0));
     assert_eq!(CONST_FINITE_F64.into_inner().to_bits(), 0.0_f64.to_bits());
+    assert_eq!(ff32(-0.0).into_inner().to_bits(), 0.0_f32.to_bits());
+    assert_eq!(ff64(-0.0).into_inner().to_bits(), 0.0_f64.to_bits());
 }
 
 #[test]
@@ -644,6 +646,13 @@ fn finite_slice_rejects_negative_zero() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
+fn finite_slice_rejects_infinity() {
+    let _ = FiniteF64::from_primitive_slice(&[f64::INFINITY]);
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn finite_slice_unchecked_bypasses_validation() {
     // SAFETY: deliberately violates Finite's invariant to document exactly what
     // `from_primitive_slice_unchecked` allows through when its safety precondition is broken —
@@ -682,6 +691,20 @@ fn finite_values_normalizes_negative_zero_f32() {
 #[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
 fn finite_slice_rejects_nan_f32() {
     let _ = FiniteF32::from_primitive_slice(&[f32::NAN]);
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
+fn finite_slice_rejects_infinity_f32() {
+    let _ = FiniteF32::from_primitive_slice(&[f32::INFINITY]);
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
+fn finite_slice_rejects_negative_zero_f32() {
+    let _ = FiniteF32::from_primitive_slice(&[-0.0]);
 }
 
 #[test]
