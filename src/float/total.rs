@@ -21,14 +21,17 @@
 //! assert!(!set.contains(TotalF32::new(6.0)));
 //!```
 
-use core::cmp::Ordering;
-use core::hash::{Hash, Hasher};
-use core::ops::RangeInclusive;
-
-use core::fmt::Debug;
+use core::{
+    cmp::Ordering,
+    fmt::Debug,
+    hash::{Hash, Hasher},
+    mem,
+    ops::RangeInclusive,
+};
 use num_traits::One;
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 
+use crate::Integer;
 #[cfg(feature = "from_slice")]
 use crate::RangeSetBlaze;
 
@@ -211,7 +214,8 @@ impl<T: TotalFloat> Total<T> {
     ///
     /// # Panics
     ///
-    /// Panics on overflow if `self` is the maximum value.
+    /// In debug builds, panics if `self` is the maximum value. In release
+    /// builds, wraps around to the minimum value instead.
     #[must_use]
     pub fn after(self) -> Self {
         debug_assert!(self != Self::MAX, "after() called on maximum value");
@@ -230,7 +234,8 @@ impl<T: TotalFloat> Total<T> {
     ///
     /// # Panics
     ///
-    /// Panics on underflow if `self` is the minimum value.
+    /// In debug builds, panics if `self` is the minimum value. In release
+    /// builds, wraps around to the maximum value instead.
     #[must_use]
     pub fn before(self) -> Self {
         debug_assert!(self != Self::MIN, "before() called on minimum value");
@@ -340,7 +345,7 @@ impl<T: TotalFloat> Total<T> {
     pub const fn slice(values: &[T::Primitive]) -> &[Self] {
         // SAFETY: Total is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
         // and `&[Total]` entirely interchangeable in layout and lifetimes.
-        unsafe { core::mem::transmute::<&[T::Primitive], &[Self]>(values) }
+        unsafe { mem::transmute::<&[T::Primitive], &[Self]>(values) }
     }
 }
 
@@ -357,7 +362,7 @@ impl<T: TotalFloat> Total<T> {
 pub const fn primitive_slice<T: TotalFloat>(values: &[Total<T>]) -> &[T::Primitive] {
     // SAFETY: TotalFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
     // and `&[TotalFloat]` entirely interchangeable in layout and lifetimes.
-    unsafe { core::mem::transmute::<&[Total<T>], &[T::Primitive]>(values) }
+    unsafe { mem::transmute::<&[Total<T>], &[T::Primitive]>(values) }
 }
 
 impl<T: TotalFloat> PartialEq for Total<T> {
@@ -386,7 +391,7 @@ impl<T: TotalFloat> Hash for Total<T> {
     }
 }
 
-impl<T: TotalFloat> crate::Integer for Total<T> {
+impl<T: TotalFloat> Integer for Total<T> {
     type SafeLen = T::SafeLen;
 
     #[inline]

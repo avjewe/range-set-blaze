@@ -3,10 +3,12 @@
 //!
 //! Not intended for customer use, but must be public for Rust reasons. Use `Total` instead.
 
-use core::cmp::Ordering;
-use core::hash::Hash;
-
-use core::fmt::{Debug, Display};
+use core::{
+    cmp::Ordering,
+    fmt::{Debug, Display},
+    hash::Hash,
+    ops::{AddAssign, SubAssign},
+};
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 use num_traits::{Num, One, Zero};
 
@@ -33,8 +35,8 @@ pub trait TotalFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         + PartialOrd
         + num_traits::Zero
         + num_traits::One
-        + core::ops::AddAssign
-        + core::ops::SubAssign;
+        + AddAssign
+        + SubAssign;
 
     /// The minimum value available, in the `total_cmp`  sense
     const MIN: Self::Primitive;

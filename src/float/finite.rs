@@ -19,13 +19,17 @@
 //! assert!(!set.contains(FiniteF32::new(6.0)));
 //!```
 
-use core::cmp::Ordering;
-use core::hash::{Hash, Hasher};
-use core::ops::RangeInclusive;
+use core::{
+    cmp::Ordering,
+    fmt::Debug,
+    hash::{Hash, Hasher},
+    mem,
+    ops::RangeInclusive,
+};
 
 use super::finite_float::FiniteFloat;
-use core::fmt::Debug;
 
+use crate::Integer;
 #[cfg(feature = "from_slice")]
 use crate::RangeSetBlaze;
 
@@ -278,7 +282,9 @@ impl<T: FiniteFloat> Finite<T> {
     ///
     /// # Panics
     ///
-    /// Panics on overflow if `self` is the maximum value.
+    /// In debug builds, panics if `self` is the maximum value. In release
+    /// builds, returns an infinite value instead, violating the `Finite`
+    /// invariant of this type.
     #[must_use]
     pub fn after(self) -> Self {
         debug_assert!(self != Self::MAX, "after() called on maximum value");
@@ -301,7 +307,9 @@ impl<T: FiniteFloat> Finite<T> {
     ///
     /// # Panics
     ///
-    /// Panics on underflow if `self` is the minimum value.
+    /// In debug builds, panics if `self` is the minimum value. In release
+    /// builds, returns an infinite value instead, violating the `Finite`
+    /// invariant of this type.
     #[must_use]
     pub fn before(self) -> Self {
         debug_assert!(self != Self::MIN, "before() called on minimum value");
@@ -459,7 +467,7 @@ impl<T: FiniteFloat> Finite<T> {
         // SAFETY: Finite is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
         // and `&[Finite]` entirely interchangeable in layout and lifetimes; the caller is
         // responsible for the value-level invariant per the safety doc above.
-        unsafe { core::mem::transmute::<&[T::Primitive], &[Self]>(values) }
+        unsafe { mem::transmute::<&[T::Primitive], &[Self]>(values) }
     }
 }
 
@@ -476,7 +484,7 @@ impl<T: FiniteFloat> Finite<T> {
 pub const fn primitive_slice<T: FiniteFloat>(values: &[Finite<T>]) -> &[T::Primitive] {
     // SAFETY: FiniteFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
     // and `&[FiniteFloat]` entirely interchangeable in layout and lifetimes.
-    unsafe { core::mem::transmute::<&[Finite<T>], &[T::Primitive]>(values) }
+    unsafe { mem::transmute::<&[Finite<T>], &[T::Primitive]>(values) }
 }
 
 impl<T: FiniteFloat> PartialEq for Finite<T> {
@@ -505,7 +513,7 @@ impl<T: FiniteFloat> Hash for Finite<T> {
     }
 }
 
-impl<T: FiniteFloat> crate::Integer for Finite<T> {
+impl<T: FiniteFloat> Integer for Finite<T> {
     type SafeLen = T::SafeLen;
 
     #[inline]

@@ -2,7 +2,7 @@
 #![cfg(feature = "total_float_experimental")]
 use range_set_blaze::RangeSetBlaze;
 use range_set_blaze::finite::ff32;
-use range_set_blaze::{FiniteF32, TotalF32};
+use range_set_blaze::{FiniteF32, FiniteF64, TotalF32, TotalF64};
 
 /// Playground for the `from_ordered` bug: `FiniteF32` promises to only ever
 /// hold finite, non-NaN, non-negative-zero values -- `new`/`try_new` enforce
@@ -144,4 +144,149 @@ fn scratch6_tiny() {
     println!("-TINY = {neg_tiny:e}");
     assert_eq!(ff32(0.0).before(), ff32(neg_tiny));
     assert_eq!(ff32(neg_tiny).after(), ff32(0.0));
+}
+
+// ---------------------------------------------------------------------
+// Every function that uses `unsafe` (transmute or otherwise) under the
+// covers. Grep for `unsafe` in src/float/{finite,total}.rs to see the
+// full list this section is tracking:
+//   - Finite::new_unchecked        (unsafe fn — direct value-invariant escape hatch)
+//   - Finite::try_new              (safe fn, built on new_unchecked)
+//   - Finite::try_from_ordered     (safe fn, built on new_unchecked)
+//   - Finite::slice_unchecked      (unsafe fn — transmute &[Primitive] -> &[Finite])
+//   - Finite::slice                (safe fn, built on slice_unchecked)
+//   - finite::primitive_slice      (safe fn — transmute &[Finite] -> &[Primitive])
+//   - Total::slice                 (safe fn — transmute &[Primitive] -> &[Total])
+//   - total::primitive_slice       (safe fn — transmute &[Total] -> &[Primitive])
+// ---------------------------------------------------------------------
+
+#[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
+fn scratch8_new_unchecked_correct_use() {
+    // `Finite::new_unchecked` is the unsafe building block every safe
+    // constructor is defined in terms of. Used correctly (finite, and zero
+    // already canonicalized to +0.0), it behaves exactly like `new`.
+    let via_unchecked = unsafe { FiniteF64::new_unchecked(42.0) };
+    let via_safe = FiniteF64::new(42.0);
+    println!("new_unchecked(42.0) = {via_unchecked:?}, new(42.0) = {via_safe:?}");
+    assert_eq!(via_unchecked, via_safe);
+}
+
+#[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
+fn scratch9_new_unchecked_misuse() {
+    // Violate the documented precondition (pass -0.0, which must already be
+    // canonicalized to +0.0). Per the safety doc, this is "nonsense, but
+    // not unsafe": no UB, but the type's invariant (no -0.0) is now broken,
+    // and that breaks the `PartialEq`/`total_cmp`-based ordering that the
+    // rest of the crate assumes holds for every live `Finite` value.
+    let broken = unsafe { FiniteF64::new_unchecked(-0.0) };
+    println!(
+        "new_unchecked(-0.0) = {broken:?}, is_sign_negative = {}",
+        broken.into_inner().is_sign_negative()
+    );
+    assert!(broken.into_inner().is_sign_negative());
+
+    // Compare: the safe constructor refuses to let this happen.
+    println!("for reference, new(-0.0) = {:?}", FiniteF64::new(-0.0));
+    assert!(!FiniteF64::new(-0.0).into_inner().is_sign_negative());
+}
+
+#[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
+fn scratch10_try_new_and_try_from_ordered() {
+    // `try_new` and `try_from_ordered` are safe functions, but each calls
+    // `new_unchecked` internally once it has independently established the
+    // safety precondition (finiteness / in-range ordered position).
+    assert_eq!(FiniteF64::try_new(1.5), Some(FiniteF64::new(1.5)));
+    assert_eq!(FiniteF64::try_new(f64::NAN), None);
+    assert_eq!(FiniteF64::try_new(f64::INFINITY), None);
+
+    let ordered = FiniteF64::new(1.5).to_ordered();
+    assert_eq!(
+        FiniteF64::try_from_ordered(ordered),
+        Some(FiniteF64::new(1.5))
+    );
+
+    // Out-of-range ordered positions (decoding to NaN/infinity) are rejected
+    // rather than handed to `new_unchecked`.
+    let nan_ordered = TotalF64::new(f64::NAN).to_ordered();
+    println!(
+        "try_from_ordered(nan_ordered) = {:?} (vs. from_ordered, which panics)",
+        FiniteF64::try_from_ordered(nan_ordered)
+    );
+    assert_eq!(FiniteF64::try_from_ordered(nan_ordered), None);
+}
+
+#[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
+fn scratch11_finite_slice_roundtrip() {
+    // `Finite::slice` validates every element (O(n)) then calls the unsafe,
+    // zero-copy `slice_unchecked` (a `mem::transmute` of `&[f64]` to
+    // `&[Finite<f64>]`, sound because `Finite` is `#[repr(transparent)]`).
+    let primitives = [1.0, 2.0, 3.0];
+    let finites: &[FiniteF64] = FiniteF64::slice(&primitives);
+    println!("FiniteF64::slice({primitives:?}) = {finites:?}");
+    assert_eq!(
+        finites,
+        [
+            FiniteF64::new(1.0),
+            FiniteF64::new(2.0),
+            FiniteF64::new(3.0)
+        ]
+    );
+
+    // Same pointer/length — it's a view, not a copy.
+    assert_eq!(finites.as_ptr().cast::<f64>(), primitives.as_ptr());
+    assert_eq!(finites.len(), primitives.len());
+
+    // The reverse view, `finite::primitive_slice`, is also just a transmute.
+    let back: &[f64] = range_set_blaze::finite::primitive_slice(finites);
+    println!("finite::primitive_slice(..) = {back:?}");
+    assert_eq!(back, primitives);
+    assert_eq!(back.as_ptr(), finites.as_ptr().cast::<f64>());
+}
+
+#[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
+#[should_panic(expected = "Finite type requires finite")]
+fn scratch12_finite_slice_rejects_bad_input() {
+    // `Finite::slice` validates before transmuting; NaN in the input panics
+    // rather than silently producing a `Finite` slice with a broken value.
+    let _ = FiniteF64::slice(&[1.0, f64::NAN, 3.0]);
+}
+
+#[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
+fn scratch13_slice_unchecked_misuse() {
+    // `slice_unchecked` skips the validation `slice` does. Feeding it NaN
+    // (violating the safety precondition) is, again, "nonsense but not
+    // unsafe": no UB, but every `Finite` value in the returned slice is now
+    // a lie -- `is_finite()`-style reasoning downstream can no longer be
+    // trusted for this slice.
+    let primitives = [1.0, f64::NAN, 3.0];
+    let finites: &[FiniteF64] = unsafe { FiniteF64::slice_unchecked(&primitives) };
+    println!("slice_unchecked({primitives:?}) = {finites:?}");
+    assert!(finites[1].into_inner().is_nan());
+}
+
+#[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
+fn scratch14_total_slice_roundtrip() {
+    // `Total::slice` and `total::primitive_slice` are both *safe* functions
+    // (unlike their `Finite` counterparts) because `Total` has no value
+    // invariant to violate -- every bit pattern of the primitive, including
+    // NaN and -0.0, is a legal `Total` value. The transmute is still there
+    // under the hood, just without an unchecked/checked split.
+    let primitives = [1.0f32, f32::NAN, -0.0, f32::INFINITY];
+    let totals: &[TotalF32] = TotalF32::slice(&primitives);
+    println!("TotalF32::slice({primitives:?}) = {totals:?}");
+    assert_eq!(totals.as_ptr().cast::<f32>(), primitives.as_ptr());
+
+    let back: &[f32] = range_set_blaze::total::primitive_slice(totals);
+    println!("total::primitive_slice(..) = {back:?}");
+    assert_eq!(back.as_ptr(), totals.as_ptr().cast::<f32>());
+    // NaN survives the round trip bit-for-bit (transmute, not a copy/parse).
+    assert!(back[1].is_nan());
+    assert!(back[2].is_sign_negative() && back[2] == 0.0);
 }

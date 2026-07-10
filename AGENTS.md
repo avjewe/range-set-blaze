@@ -67,6 +67,11 @@ public-API quality matter more here than in an experimental project.
 - Do not remove debug/test code, commented-out comparison blocks, or in-progress test scaffolding
   until the underlying issue is proven fixed and the human has accepted the cleanup.
 
+## Import Style
+
+- If an item comes from `crate`, `core`, `std`, or `alloc`, import it with `use` instead of using
+  a fully-qualified path in code. Fully-qualified paths are fine in docs or comments.
+
 ## Module Structure Convention
 
 Do not create `mod.rs` files. This repo already follows the `src/foo.rs` + `src/foo/bar.rs`
