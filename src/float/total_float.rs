@@ -60,7 +60,12 @@ pub trait TotalFloat:
     fn from_ordered(x: Self::Ordered) -> Self;
     /// Transform a float value into a type with more concrete semantics, e.g. `f64::to_bits()`
     fn to_bits(x: Self) -> Self::Bits;
-    /// Return the size of the inclusive range from start to end
+    /// Return the size of an inclusive ordered range from `start` to `end`.
+    ///
+    /// # Precondition
+    /// `start <= end`. The range must be non-empty and already expressed in ordered space. This
+    /// is checked with `debug_assert!` and is not checked in release builds. Public set/map APIs
+    /// accept inverted ranges as empty; they must not pass such ranges to this internal helper.
     fn safe_len(start: Self::Ordered, end: Self::Ordered) -> Self::SafeLen;
     /// Converts [`TotalFloat::SafeLen`] to `f64`, potentially losing precision for large values.
     fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64;
