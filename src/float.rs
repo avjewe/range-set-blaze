@@ -17,15 +17,15 @@
 //!
 //! let overlapping_intervals = vec![
 //!     (11.0, 13.0),
-//!     (1.0, 3.0),
+//!     (1.00000001, 2.99999999),
 //!     (30.0, 31.0),
-//!     (5.5, 9.0),
-//!     (-4.0, 2.0),
+//!     (5.50000002, 9.00000006),
+//!     (-4.0, 1.99999999),
 //!     (15.0, 15.0),
-//!     (7.0, 7.5),
-//!     (21.0, 28.0),
-//!     (2.5, 6.0),
-//!     (19.0, 22.0),
+//!     (7.00000003, 7.49999997),
+//!     (21.00000004, 28.0),
+//!     (2.50000005, 5.99999996),
+//!     (19.0, 21.99999998),
 //! ];
 //!
 //! let disjoint_intervals: Vec<_> = overlapping_intervals
@@ -39,7 +39,7 @@
 //! assert_eq!(
 //!     disjoint_intervals,
 //!     vec![
-//!         (-4.0, 9.0),
+//!         (-4.0, 9.00000006),
 //!         (11.0, 13.0),
 //!         (15.0, 15.0),
 //!         (19.0, 28.0),
@@ -72,7 +72,7 @@
     "\n````"
 )]
 //! ## Example: Total Floats
-//! 
+//!
 //! Unlike `Finite`, `Total` uses `total_cmp` order, so it can also represent
 //! NaN, the infinities, and -0.0 as distinct, orderable values. This example
 //! builds a category map over all of `f64` from nothing but
