@@ -13,7 +13,7 @@
 //! evaluate for each input range. Averaged uniformly over representable `f32`
 //! values in `[-pi, pi]`, only about 1.2 terms are needed.
 //!
-//! Real math libraries go even further. They first reduce the input to a
+//! Aside: Real math libraries go even further. They first reduce the input to a
 //! smaller interval (using cosine's periodicity and symmetry) and then use
 //! carefully optimized minimax polynomials rather than a Taylor series.
 //! This example intentionally uses the simpler Taylor series so the focus
@@ -61,8 +61,8 @@ fn main() {
     let scope = RangeSetBlaze::from_iter([ff32(-PI)..=ff32(PI)]);
 
     // Split scope across all available cores; each thread sweeps its own
-    // chunk into a local RangeMapBlaze, then union (also known as `|` and `bitor`) merges them --
-    // cheap ranges in each chunk turns out to be small.
+    // chunk into a local RangeMapBlaze, then union (also known as `|` and `bitor`)
+    // merges them --this is cheap because the # of ranges in each chunk turns out to be small.
     let num_chunks = available_parallelism().map_or(1, std::num::NonZero::get);
     let term_map: RangeMapBlaze<FiniteF32, u8> = chunks(&scope, num_chunks)
         .into_par_iter()

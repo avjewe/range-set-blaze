@@ -151,7 +151,33 @@ impl<T: FiniteFloat> Finite<T> {
     /// ```
     #[must_use]
     pub fn try_new(x: T::Primitive) -> Option<Self> {
-        T::is_finite(x).then(|| Self(T::normalize(x)))
+        // SAFETY: `T::is_finite` rules out NaN/infinity, and `T::normalize` canonicalizes -0.0.
+        T::is_finite(x).then(|| unsafe { Self::new_unchecked(T::normalize(x)) })
+    }
+
+    /// Creates a new [`Finite`] from a primitive float without validating it.
+    ///
+    /// This is the unchecked building block every validating constructor in this module
+    /// (`new`, `try_new`, `from_ordered`, `range`, `values`, `slice`, ...) is defined in terms
+    /// of. Prefer those; only reach for this when you have already independently established
+    /// the safety precondition below and need to skip the redundant check.
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that:
+    /// - `x` is finite: not NaN, not `+/-infinity`.
+    /// - `x` is not `-0.0`: zero must already be canonicalized to `+0.0`.
+    ///
+    /// [`Finite`] has a public type invariant ("only finite values, with zero canonicalized to
+    /// `+0.0`, are legal"). Even though today's implementation would only produce incorrect
+    /// results (wrong `MAX_SIZE`, a duplicated zero slot, `next`/`prev` landing somewhere
+    /// unexpected) rather than immediate undefined behavior if this precondition is violated,
+    /// safe code must never be able to construct a value that breaks it. This preserves the
+    /// option for this crate, and downstream code, to rely on the invariant in future
+    /// (potentially unsafe) abstractions without an audit of every safe caller.
+    #[must_use]
+    pub const unsafe fn new_unchecked(x: T::Primitive) -> Self {
+        Self(x)
     }
 
     /// Computes `self + (b - 1)` where `b` is of type `SafeLen`.
@@ -209,8 +235,36 @@ impl<T: FiniteFloat> Finite<T> {
     ///
     /// assert_eq!(FiniteF64::from_ordered(FiniteF64::new(42.0).to_ordered()).into_inner(), 42.0);
     /// ```
+    /// # Panics
+    ///
+    /// Panics if `x` is outside the finite range (i.e. would decode to NaN or +/-infinity).
     pub fn from_ordered(x: T::Ordered) -> Self {
-        Self(T::from_ordered(x))
+        Self::try_from_ordered(x)
+            .expect("Finite type requires an ordered value within the finite range")
+    }
+
+    /// Transforms the ordered Ordered space back into standard float bits.
+    ///
+    /// Returns `None` if `x` is outside the finite range (i.e. would decode to NaN or
+    /// +/-infinity). The one in-range value that decodes to `-0.0` is normalized to `+0.0`.
+    ///
+    /// # Examples
+    /// ```
+    /// use range_set_blaze::FiniteF64;
+    ///
+    /// assert_eq!(
+    ///     FiniteF64::try_from_ordered(FiniteF64::new(42.0).to_ordered()),
+    ///     Some(FiniteF64::new(42.0))
+    /// );
+    /// ```
+    #[must_use]
+    pub fn try_from_ordered(x: T::Ordered) -> Option<Self> {
+        if x < T::MIN_ORDERED || x > T::MAX_ORDERED {
+            return None;
+        }
+        // SAFETY: the bounds check above rules out any ordered position that would decode to
+        // NaN or +/-infinity, and `T::normalize` canonicalizes the one remaining -0.0 position.
+        Some(unsafe { Self::new_unchecked(T::normalize(T::from_ordered(x))) })
     }
 
     /// Returns the next float.
@@ -311,10 +365,14 @@ impl<T: FiniteFloat> Finite<T> {
     /// let short = RangeSetBlaze::from(FiniteF64::range(3.0..=5.0));
     /// let long = RangeSetBlaze::from(FiniteF64::new(3.0)..=FiniteF64::new(5.0));
     /// assert_eq!(short, long);
+    /// ```
+    /// # Panics
+    ///
+    /// Panics if `start` or `end` is not finite.
     #[must_use]
     pub fn range(range: RangeInclusive<T::Primitive>) -> RangeInclusive<Self> {
         let (start, end) = range.into_inner();
-        Self(start)..=Self(end)
+        Self::new(start)..=Self::new(end)
     }
 
     /// Convenience method to convert inclusive primitive ranges into inclusive [`Finite`] ranges.
@@ -340,16 +398,21 @@ impl<T: FiniteFloat> Finite<T> {
     /// let short = RangeSetBlaze::from_iter(FiniteF64::values([1.0, 2.0, 3.0, 4.0]));
     /// let long = RangeSetBlaze::from_iter([FiniteF64::new(1.0), FiniteF64::new(2.0), FiniteF64::new(3.0), FiniteF64::new(4.0)]);
     /// assert_eq!(short, long);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics (when iterated) if any value is not finite.
     pub fn values<I>(values: I) -> impl Iterator<Item = Self>
     where
         I: IntoIterator<Item = T::Primitive>,
     {
-        values.into_iter().map(Self)
+        values.into_iter().map(Self::new)
     }
 
-    /// Views primitive values as ordered [`Finite`] values.
+    /// Views primitive values as ordered [`Finite`] values, validating as it goes.
     ///
-    /// This runs in `O(1)` and does not allocate.
+    /// This runs in `O(n)` (to validate every element) and does not allocate.
     /// # Examples
     /// ```
     /// use range_set_blaze::{RangeSetBlaze, FiniteF64};
@@ -357,10 +420,45 @@ impl<T: FiniteFloat> Finite<T> {
     /// let short = RangeSetBlaze::from_iter(FiniteF64::slice(&[1.0, 2.0, 3.0, 4.0]));
     /// let long = RangeSetBlaze::from_iter([FiniteF64::new(1.0), FiniteF64::new(2.0), FiniteF64::new(3.0), FiniteF64::new(4.0)]);
     /// assert_eq!(short, long);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if any element is not finite, or is `-0.0` (which can't be normalized to `+0.0`
+    /// without copying — see [`Finite::slice_unchecked`] if you need a true zero-copy view and
+    /// can guarantee your data already satisfies [`Finite`]'s invariant).
     #[must_use]
-    pub const fn slice(values: &[T::Primitive]) -> &[Self] {
+    pub fn slice(values: &[T::Primitive]) -> &[Self] {
+        assert!(
+            values
+                .iter()
+                .all(|&v| T::is_finite(v) && !T::is_neg_zero(v)),
+            "Finite type requires finite, non-negative-zero values"
+        );
+        // SAFETY: just validated every element is finite and not -0.0.
+        unsafe { Self::slice_unchecked(values) }
+    }
+
+    /// Views primitive values as ordered [`Finite`] values, without validating them.
+    ///
+    /// This runs in `O(1)` and does not allocate.
+    ///
+    /// # Safety
+    ///
+    /// The caller must guarantee that every element of `values` is finite (not NaN, not
+    /// `+/-infinity`) and not `-0.0` (zero must already be canonicalized to `+0.0`). Because
+    /// the returned slice is a live view over the same memory (not a copy), there is no
+    /// opportunity to normalize `-0.0` even if the caller wanted to; the data must already be
+    /// clean.
+    ///
+    /// [`Finite`] has a public type invariant that safe code must never be able to break, even
+    /// though violating it today would only produce incorrect results (see
+    /// [`Finite::new_unchecked`] for the full rationale).
+    #[must_use]
+    pub const unsafe fn slice_unchecked(values: &[T::Primitive]) -> &[Self] {
         // SAFETY: Finite is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
-        // and `&[Finite]` entirely interchangeable in layout and lifetimes.
+        // and `&[Finite]` entirely interchangeable in layout and lifetimes; the caller is
+        // responsible for the value-level invariant per the safety doc above.
         unsafe { core::mem::transmute::<&[T::Primitive], &[Self]>(values) }
     }
 }

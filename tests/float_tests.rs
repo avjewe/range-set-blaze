@@ -536,15 +536,14 @@ fn total_complement_total128() {
 }
 
 // ============================================================================
-// KNOWN BUGS (TDD red step): the tests below currently FAIL. They document
-// real invariant violations, not test-writing mistakes. `FiniteF64`'s own doc
-// comment (see `FiniteF64` / `Finite<T>`) promises values "excluding NaN,
-// -0.0, and infinities," and `new()`/`try_new()` enforce that via
-// `T::is_finite` + `T::normalize`. But `range()`, `ranges()`, `values()`, and
-// `slice()` are convenience/zero-copy constructors that build `Self` directly
-// (or `transmute` for `slice()`), bypassing both the finiteness check and the
-// -0.0 normalization. Left as failing tests on purpose so this is visible in
-// CI until someone (author or reviewer) decides how to fix it.
+// Construction validation (see specs/finite-construction-validation.md).
+// `FiniteF64`'s doc comment (see `FiniteF64` / `Finite<T>`) promises values
+// "excluding NaN, -0.0, and infinities." `new()`/`try_new()` enforce that via
+// `T::is_finite` + `T::normalize`; `range()`, `ranges()`, and `values()` now
+// route through `new()` so they enforce the same contract. `slice()` validates
+// (panicking on bad input) and delegates to the `unsafe` `slice_unchecked()`
+// for the actual zero-copy view, which — like `new_unchecked()` — requires the
+// caller to already guarantee the invariant.
 // ============================================================================
 
 #[test]
@@ -580,21 +579,34 @@ fn finite_values_normalizes_negative_zero() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-fn finite_slice_can_create_invalid_finite_value() {
-    let values = FiniteF64::slice(&[f64::NAN]);
-
-    assert!(
-        !values[0].into_inner().is_nan(),
-        "safe FiniteF64::slice allowed a NaN-backed FiniteF64"
-    );
+#[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
+fn finite_slice_rejects_nan() {
+    let _ = FiniteF64::slice(&[f64::NAN]);
 }
 
-// The bypass logic in `range`/`values`/`slice` is shared generic code (one
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
+fn finite_slice_rejects_negative_zero() {
+    let _ = FiniteF64::slice(&[-0.0]);
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn finite_slice_unchecked_bypasses_validation() {
+    // SAFETY: deliberately violates Finite's invariant to document exactly what
+    // `slice_unchecked` allows through when its safety precondition is broken —
+    // this is the documented "logic error, not UB" escape hatch from the spec.
+    let values = unsafe { FiniteF64::slice_unchecked(&[f64::NAN]) };
+    assert!(values[0].into_inner().is_nan());
+}
+
+// The validation logic in `range`/`values`/`slice` is shared generic code (one
 // impl block in `finite.rs`, monomorphized per type) — the tests above
-// already prove the bug there once. These f32/f128 variants aren't re-testing
-// that shared logic; they sanity-check that each type's own `FiniteFloat::
+// already prove it works once. These f32/f128 variants aren't re-testing that
+// shared logic; they sanity-check that each type's own `FiniteFloat::
 // is_finite`/`normalize` leaf impl (which live separately per type in
-// `finite_float.rs`) behaves the same way once a fix routes through them.
+// `finite_float.rs`) behaves the same way through it.
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
@@ -614,13 +626,17 @@ fn finite_values_normalizes_negative_zero_f32() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-fn finite_slice_can_create_invalid_finite_value_f32() {
-    let values = FiniteF32::slice(&[f32::NAN]);
+#[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
+fn finite_slice_rejects_nan_f32() {
+    let _ = FiniteF32::slice(&[f32::NAN]);
+}
 
-    assert!(
-        !values[0].into_inner().is_nan(),
-        "safe FiniteF32::slice allowed a NaN-backed FiniteF32"
-    );
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn finite_slice_unchecked_bypasses_validation_f32() {
+    // SAFETY: deliberately violates Finite's invariant, see the f64 variant above.
+    let values = unsafe { FiniteF32::slice_unchecked(&[f32::NAN]) };
+    assert!(values[0].into_inner().is_nan());
 }
 
 #[test]
@@ -644,13 +660,18 @@ fn finite_values_normalizes_negative_zero_f128() {
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
-fn finite_slice_can_create_invalid_finite_value_f128() {
-    let values = FiniteF128::slice(&[f128::NAN]);
+#[should_panic(expected = "Finite type requires finite, non-negative-zero values")]
+fn finite_slice_rejects_nan_f128() {
+    let _ = FiniteF128::slice(&[f128::NAN]);
+}
 
-    assert!(
-        !values[0].into_inner().is_nan(),
-        "safe FiniteF128::slice allowed a NaN-backed FiniteF128"
-    );
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn finite_slice_unchecked_bypasses_validation_f128() {
+    // SAFETY: deliberately violates Finite's invariant, see the f64 variant above.
+    let values = unsafe { FiniteF128::slice_unchecked(&[f128::NAN]) };
+    assert!(values[0].into_inner().is_nan());
 }
 
 // ============================================================================
@@ -662,45 +683,85 @@ fn finite_slice_can_create_invalid_finite_value_f128() {
 // NaN. It exhaustively checks internal self-consistency of that walk
 // (safe_len, inclusive_end_from_start, next/prev symmetry) — it never routes
 // arbitrary/adversarial *input* bit patterns (NaN, -0.0, +/-infinity) through
-// the other public entry points (`values`, `range`, `slice`), which is
-// exactly where the bug lives. Below is the same exhaustive-over-all-bits
-// idea as `full_16`, but aimed at the constructors instead of the walk.
+// the other public entry points (`values`, `range`, `slice`). Below is the
+// same exhaustive-over-all-bits idea as `full_16`, but aimed at the
+// constructors: every valid bit pattern must round-trip cleanly through all
+// three, -0.0 must normalize (or, for `slice`, panic, since it can't
+// normalize a borrowed view), and every other invalid bit pattern must panic.
 // ============================================================================
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
-fn finite_f16_exhaustive_bit_patterns_via_bypass_constructors() {
+fn finite_f16_exhaustive_bit_patterns_via_constructors() {
     let mut failures = Vec::new();
+
+    // Silence panic output for the (many) bit patterns we expect to panic below;
+    // restore the previous hook before asserting so a real test failure still prints.
+    let prev_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(|_| {}));
 
     for bits in 0..=u16::MAX {
         let x = f16::from_bits(bits);
+        let is_neg_zero = x == 0.0 && x.is_sign_negative();
 
-        let via_values = FiniteF16::values([x]).next().unwrap();
-        if !via_values.into_inner().is_finite() {
-            failures.push(format!(
-                "values(): bits {bits:#06x} ({x}) produced non-finite FiniteF16"
-            ));
-        } else if via_values.into_inner() == 0.0 && via_values.into_inner().is_sign_negative() {
-            failures.push(format!(
-                "values(): bits {bits:#06x} produced -0.0-backed FiniteF16 (should normalize to +0.0)"
-            ));
-        }
+        if x.is_finite() && !is_neg_zero {
+            let via_values = FiniteF16::values([x]).next().unwrap();
+            if via_values.into_inner() != x {
+                failures.push(format!(
+                    "values(): bits {bits:#06x} ({x}) did not round-trip, got {:?}",
+                    via_values.into_inner()
+                ));
+            }
 
-        let via_range = *FiniteF16::range(x..=x).start();
-        if !via_range.into_inner().is_finite() {
-            failures.push(format!(
-                "range(): bits {bits:#06x} ({x}) produced non-finite FiniteF16"
-            ));
-        }
+            let via_range = *FiniteF16::range(x..=x).start();
+            if via_range.into_inner() != x {
+                failures.push(format!(
+                    "range(): bits {bits:#06x} ({x}) did not round-trip, got {:?}",
+                    via_range.into_inner()
+                ));
+            }
 
-        let via_slice = FiniteF16::slice(core::slice::from_ref(&x))[0];
-        if !via_slice.into_inner().is_finite() {
-            failures.push(format!(
-                "slice(): bits {bits:#06x} ({x}) produced non-finite FiniteF16"
-            ));
+            let via_slice = FiniteF16::slice(core::slice::from_ref(&x))[0];
+            if via_slice.into_inner() != x {
+                failures.push(format!(
+                    "slice(): bits {bits:#06x} ({x}) did not round-trip, got {:?}",
+                    via_slice.into_inner()
+                ));
+            }
+        } else if is_neg_zero {
+            let via_values = FiniteF16::values([x]).next().unwrap();
+            if via_values.into_inner().is_sign_negative() {
+                failures.push(format!("values(): bits {bits:#06x} did not normalize -0.0"));
+            }
+
+            let via_range = *FiniteF16::range(x..=x).start();
+            if via_range.into_inner().is_sign_negative() {
+                failures.push(format!("range(): bits {bits:#06x} did not normalize -0.0"));
+            }
+
+            if std::panic::catch_unwind(|| FiniteF16::slice(core::slice::from_ref(&x))).is_ok() {
+                failures.push(format!(
+                    "slice(): bits {bits:#06x} (-0.0) should have panicked, can't normalize a view"
+                ));
+            }
+        } else {
+            // NaN or +/-infinity: all three constructors must panic.
+            if std::panic::catch_unwind(|| FiniteF16::values([x]).next()).is_ok() {
+                failures.push(format!(
+                    "values(): bits {bits:#06x} ({x}) should have panicked"
+                ));
+            }
+            if std::panic::catch_unwind(|| FiniteF16::range(x..=x)).is_ok() {
+                failures.push(format!("range(): bits {bits:#06x} ({x}) should have panicked"));
+            }
+            if std::panic::catch_unwind(|| FiniteF16::slice(core::slice::from_ref(&x))).is_ok() {
+                failures.push(format!("slice(): bits {bits:#06x} ({x}) should have panicked"));
+            }
         }
     }
+
+    std::panic::set_hook(prev_hook);
 
     assert!(
         failures.is_empty(),
@@ -754,45 +815,54 @@ fn full_16() {
 }
 
 // ============================================================================
-// KNOWN BUG (TDD red step): `Finite<T>`'s doc comment (see `Finite<T>` /
-// `FiniteF64` above) promises every value it holds is "excluding NaN, -0.0,
-// and infinities." `try_new`/`new` enforce that. But `from_ordered`
-// (`Finite::from_ordered` in `finite.rs`, backed by `FiniteFloat::
-// from_ordered` in `finite_float.rs`) is a *public*, infallible round-trip
-// helper that accepts an arbitrary `Ordered` value with no validation at
-// all -- not even a `debug_assert`. Any `Ordered` value outside
-// `MIN_ORDERED..=MAX_ORDERED`, or equal to the ordered slot for -0.0,
-// silently produces a `Finite` value wrapping NaN, +/-infinity, or -0.0.
-// Left failing on purpose, same as the `values`/`range`/`slice` bugs above,
-// until someone decides how to fix it (validate-and-panic, return a
-// `Result`, or document/rename to make the danger unmissable).
+// `Finite<T>`'s doc comment (see `Finite<T>` / `FiniteF64` above) promises
+// every value it holds is "excluding NaN, -0.0, and infinities."
+// `try_new`/`new` enforce that. `from_ordered` now does too, via
+// `try_from_ordered` (bounds-checked against the finite ordered range,
+// normalizing the one in-range -0.0 position) plus a panic on out-of-range
+// input, the same `try_x`/`x`-panics shape as `try_new`/`new`.
 // ============================================================================
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "total_float_nightly_experimental")]
-fn finite_f16_exhaustive_from_ordered_rejects_out_of_domain() {
+fn finite_f16_exhaustive_try_from_ordered() {
     // Exhaustive: f16's `Ordered` type is `i16`, so there are only 65536
-    // possible inputs -- walk every single one and record every input that
-    // breaks `FiniteF16`'s finite/-0.0 invariant.
+    // possible inputs -- walk every single one and check `try_from_ordered`
+    // accepts exactly the in-domain ones, producing a finite, non-negative-zero
+    // `FiniteF16`, and rejects (returns `None` for) everything else.
+    let min_ordered = FiniteF16::MIN.to_ordered();
+    let max_ordered = FiniteF16::MAX.to_ordered();
     let mut failures = Vec::new();
 
     for ordered in i16::MIN..=i16::MAX {
-        let value = FiniteF16::from_ordered(ordered);
-        let inner = value.into_inner();
-        let is_negative_zero = inner == 0.0 && inner.is_sign_negative();
+        let in_domain = ordered >= min_ordered && ordered <= max_ordered;
 
-        if !inner.is_finite() || is_negative_zero {
-            failures.push(format!(
-                "from_ordered({ordered}) produced invalid FiniteF16 {inner:?} (finite: {}, is -0.0: {is_negative_zero})",
-                inner.is_finite()
-            ));
+        match (in_domain, FiniteF16::try_from_ordered(ordered)) {
+            (true, Some(value)) => {
+                let inner = value.into_inner();
+                let is_negative_zero = inner == 0.0 && inner.is_sign_negative();
+                if !inner.is_finite() || is_negative_zero {
+                    failures.push(format!(
+                        "try_from_ordered({ordered}) returned Some({inner:?}) which is invalid (finite: {}, is -0.0: {is_negative_zero})",
+                        inner.is_finite()
+                    ));
+                }
+            }
+            (true, None) => failures.push(format!(
+                "try_from_ordered({ordered}) returned None, but {ordered} is in the finite domain"
+            )),
+            (false, Some(value)) => failures.push(format!(
+                "try_from_ordered({ordered}) returned Some({:?}), but {ordered} is out of the finite domain",
+                value.into_inner()
+            )),
+            (false, None) => {} // correctly rejected
         }
     }
 
     assert!(
         failures.is_empty(),
-        "{} of 65536 ordered i16 values broke FiniteF16's finite/-0.0 invariant via from_ordered; first 10:\n{}",
+        "{} of 65536 ordered i16 values broke FiniteF16's try_from_ordered contract; first 10:\n{}",
         failures.len(),
         failures[..failures.len().min(10)].join("\n")
     );
@@ -800,22 +870,22 @@ fn finite_f16_exhaustive_from_ordered_rejects_out_of_domain() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-fn finite_f32_from_ordered_accepts_nan_ordered_bug() {
-    // Same bug as the f16 exhaustive test above, but a single concrete
-    // example for f32 (whose Ordered domain, i32, is too large to walk
-    // exhaustively here). `TotalF32` shares the exact same `Ordered`
-    // encoding as `FiniteF32` and has no finiteness restriction, so we can
-    // use it to manufacture "the Ordered position of f32::NAN" and feed it
-    // straight into `FiniteF32::from_ordered`.
+#[should_panic(expected = "Finite type requires an ordered value within the finite range")]
+fn finite_f32_from_ordered_rejects_nan_ordered() {
+    // `TotalF32` shares the exact same `Ordered` encoding as `FiniteF32` and has no
+    // finiteness restriction, so we can use it to manufacture "the Ordered position
+    // of f32::NAN" and feed it straight into `FiniteF32::from_ordered`.
     let nan_ordered = TotalF32::new(f32::NAN).to_ordered();
 
-    let value = FiniteF32::from_ordered(nan_ordered);
+    let _ = FiniteF32::from_ordered(nan_ordered);
+}
 
-    assert!(
-        !value.into_inner().is_nan(),
-        "BUG: FiniteF32::from_ordered({nan_ordered}) produced a NaN-backed FiniteF32: {:?}",
-        value.into_inner()
-    );
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn finite_f32_try_from_ordered_rejects_nan_ordered() {
+    let nan_ordered = TotalF32::new(f32::NAN).to_ordered();
+
+    assert_eq!(FiniteF32::try_from_ordered(nan_ordered), None);
 }
 
 #[test]
