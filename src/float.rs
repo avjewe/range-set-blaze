@@ -12,7 +12,7 @@
 //!
 //! Turn a list of unsorted, overlapping f64 intervals (inclusive) into
 //! a sorted list of disjoint intervals (still inclusive).
-//!```
+//! ```
 //! use range_set_blaze::{RangeSetBlaze, FiniteF64, finite::FiniteRangeExt};
 //!
 //! let overlapping_intervals = vec![
@@ -46,11 +46,11 @@
 //!         (30.0, 31.0)
 //!     ]
 //! );
-//!```
+//! ```
 //!
 //! ## Example: Wrapping Primitive (e.g. f32, f64) Ranges
 //!
-//!```
+//! ```
 //! use range_set_blaze::{RangeSetBlaze, FiniteF64, TotalF32, TotalF64};
 //! let set = RangeSetBlaze::from_iter([TotalF64::new(3.0)..=TotalF64::new(5.0)]);
 //! assert!(set.contains(TotalF64::new(3.1)));
@@ -63,7 +63,7 @@
 //! let set = RangeSetBlaze::from_iter(TotalF32::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
 //! assert!(set.contains(TotalF32::new(4.0)));
 //! assert!(!set.contains(TotalF32::new(6.0)));
-//!```
+//! ```
 //!
 //! ## Example: Coalescing Over Two Billion f32's
 #![doc = concat!(
@@ -81,7 +81,7 @@
 //! then punch in the infinities and -0.0 as exceptions (overlapping ranges
 //! have right-to-left precedence, so later entries win).
 //!
-//!```
+//! ```
 //! use range_set_blaze::{RangeMapBlaze, TotalF64, total::{tf64, TotalRangeExt}};
 //!
 //! #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -123,7 +123,7 @@
 //! // 0e0 (0x0000000000000000) ..= 1.7976931348623157e308 (0x7fefffffffffffff) -> Normal
 //! // inf (0x7ff0000000000000) ..= inf (0x7ff0000000000000) -> PosInfinity
 //! // NaN (0x7ff0000000000001) ..= NaN (0x7fffffffffffffff) -> NaN
-//!```
+//! ```
 
 mod finite_float;
 mod total_float;

@@ -24,19 +24,20 @@ ci-nightly: test-nightly
 
 # Run clippy with CI settings (matches CI exactly, using the pinned toolchain in rust-toolchain.toml)
 clippy:
-    cargo clippy --verbose --all-targets --features "std rog_experimental" -- -D clippy::all -A deprecated
+    cargo clippy --verbose --all-targets --features "std rog_experimental total_float_experimental" -- -D clippy::all -A deprecated
 
 # Preview lints on the newest stable toolchain, ignoring the rust-toolchain.toml pin.
 # Run this occasionally to catch new/renamed lints before bumping the pin, instead of
 # being surprised when CI's `stable` runner updates out from under you.
 clippy-latest:
     rustup update stable
-    cargo +stable clippy --verbose --all-targets --features "std rog_experimental" -- -D clippy::all -A deprecated
+    cargo +stable clippy --verbose --all-targets --features "std rog_experimental total_float_experimental" -- -D clippy::all -A deprecated
 
 # Run all stable tests (matches CI)
 test-stable:
     cargo test --verbose
     cargo test --verbose --release
+    cargo test --verbose --release --features "std total_float_experimental"
     cargo test --verbose --no-default-features --features "rog_experimental"
     cargo test --verbose --features "std total_float_experimental"
     cargo test --verbose --features "std rog_experimental total_float_experimental"
@@ -133,6 +134,14 @@ test-wasm:
     CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose
     CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose --no-default-features --features "rog_experimental"
     CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose --features "std total_float_experimental"
+
+# Portable stable float tests for local WSL runs.
+test-floats-portable:
+    cargo test --verbose --features "std total_float_experimental"
+    cargo test --verbose --release --features "std total_float_experimental"
+    rustup target add wasm32-wasip1
+    CARGO_TARGET_WASM32_WASIP1_RUNNER='wasmtime run --dir .' cargo test --target wasm32-wasip1 --verbose --features "std total_float_experimental"
+    wasm-pack test --node -- --features "std total_float_experimental" --verbose
 
 # ============================================================================
 # SIMD Feature (from_slice) - Requires Nightly

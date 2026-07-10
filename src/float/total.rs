@@ -537,6 +537,7 @@ impl<T: TotalFloat> Integer for Total<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Integer;
     use crate::float::total_float::{
         from_ordered_32, from_ordered_64, to_ordered_32, to_ordered_64,
     };
@@ -740,6 +741,102 @@ mod tests {
         }
     }
 
+    #[test]
+    fn adjacency_laws_cover_f32_and_f64_edges() {
+        macro_rules! check {
+            ($wrapper:ident, $constructor:ident, $zero:expr, $negative_subnormal:expr, $positive_subnormal:expr, $min:expr, $max:expr) => {
+                let values = [
+                    $constructor($zero),
+                    $constructor($negative_subnormal),
+                    $constructor($positive_subnormal),
+                    $constructor(-1.0),
+                    $constructor(1.0),
+                    $constructor($min),
+                    $constructor($max),
+                    $constructor(f32::INFINITY),
+                    $constructor(f32::NAN),
+                ];
+                for value in values {
+                    assert_eq!(value.after().before(), value);
+                    assert_eq!(value.before().after(), value);
+                }
+                assert_eq!($wrapper::MIN.checked_before(), None);
+                assert_eq!($wrapper::MAX.checked_after(), None);
+            };
+        }
+        check!(
+            TotalF32,
+            tf32,
+            0.0_f32,
+            -f32::from_bits(1),
+            f32::from_bits(1),
+            f32::MIN,
+            f32::MAX
+        );
+
+        let values = [
+            tf64(-0.0),
+            tf64(0.0),
+            tf64(-f64::from_bits(1)),
+            tf64(f64::from_bits(1)),
+            tf64(-f64::MAX),
+            tf64(f64::MAX),
+            tf64(f64::NEG_INFINITY),
+            tf64(f64::INFINITY),
+            tf64(f64::from_bits(0x7ff8_0000_0000_0001)),
+        ];
+        for value in values {
+            assert_eq!(value.after().before(), value);
+            assert_eq!(value.before().after(), value);
+        }
+        assert_eq!(TotalF64::MIN.checked_before(), None);
+        assert_eq!(TotalF64::MAX.checked_after(), None);
+    }
+
+    #[test]
+    fn range_length_laws_cover_f32_and_f64() {
+        let start = tf32(-f32::from_bits(1));
+        assert_eq!(TotalF32::safe_len(&(start..=start)), 1);
+        assert_eq!(TotalF32::safe_len(&(start..=start.after())), 2);
+        assert_eq!(
+            TotalF32::MAX_SIZE,
+            TotalF32::safe_len(&(TotalF32::MIN..=TotalF32::MAX))
+        );
+        let length = 17;
+        let end = start.inclusive_end_from_start(length);
+        assert_eq!(end.start_from_inclusive_end(length), start);
+
+        let start = tf64(-f64::from_bits(1));
+        assert_eq!(TotalF64::safe_len(&(start..=start)), 1);
+        assert_eq!(TotalF64::safe_len(&(start..=start.after())), 2);
+        assert_eq!(
+            TotalF64::MAX_SIZE,
+            TotalF64::safe_len(&(TotalF64::MIN..=TotalF64::MAX))
+        );
+        let length = 17;
+        let end = start.inclusive_end_from_start(length);
+        assert_eq!(end.start_from_inclusive_end(length), start);
+    }
+
+    #[cfg(feature = "total_float_nightly_experimental")]
+    #[test]
+    fn f16_total_adjacency_and_lengths_are_exhaustive() {
+        for bits in 0..=u16::MAX {
+            let value = TotalF16::new(f16::from_bits(bits));
+            if value != TotalF16::MAX {
+                assert_eq!(value.after().before(), value);
+            }
+            if value != TotalF16::MIN {
+                assert_eq!(value.before().after(), value);
+            }
+            assert_eq!(TotalF16::safe_len(&(value..=value)), 1);
+        }
+        assert_eq!(
+            TotalF16::MAX_SIZE,
+            TotalF16::safe_len(&(TotalF16::MIN..=TotalF16::MAX))
+        );
+    }
+
     fn hash(value: TotalF64) -> u64 {
         let mut hasher = DefaultHasher::new();
         value.hash(&mut hasher);
@@ -748,8 +845,8 @@ mod tests {
     #[test]
     #[cfg(feature = "total_float_nightly_experimental")]
     fn ordered_round_trip() {
-        use crate::total_float::from_ordered_16;
-        use crate::total_float::to_ordered_16;
+        use crate::float::total_float::from_ordered_16;
+        use crate::float::total_float::to_ordered_16;
         for x in i16::MIN..=i16::MAX {
             assert_eq!(to_ordered_16(from_ordered_16(x)), x);
         }

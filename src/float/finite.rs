@@ -683,8 +683,61 @@ impl<T: FiniteFloat> Integer for Finite<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Integer;
+    use std::hint::black_box;
+    use std::panic::{AssertUnwindSafe, catch_unwind};
     use std::vec;
     use std::vec::Vec;
+
+    fn panics(f: impl FnOnce()) -> bool {
+        catch_unwind(AssertUnwindSafe(f)).is_err()
+    }
+
+    #[test]
+    fn safe_constructors_preserve_finite_invariant() {
+        assert_eq!(ff32(-0.0).into_inner().to_bits(), 0);
+        assert_eq!(ff64(-0.0).into_inner().to_bits(), 0);
+        assert_eq!(FiniteF64::new(-0.0), ff64(0.0));
+        assert_eq!(FiniteF64::try_new(-0.0), Some(ff64(0.0)));
+
+        for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert!(panics(|| {
+                black_box(FiniteF64::new(invalid));
+            }));
+            assert_eq!(FiniteF64::try_new(invalid), None);
+            assert!(panics(|| drop(FiniteF64::from_primitive_range(
+                invalid..=1.0
+            ))));
+            assert!(panics(|| {
+                FiniteF64::values([invalid]).count();
+            }));
+            assert!(panics(|| {
+                black_box(FiniteF64::from_primitive_slice(&[invalid]));
+            }));
+        }
+
+        assert!(panics(|| {
+            black_box(FiniteF64::from_primitive_slice(&[-0.0]));
+        }));
+        assert!(panics(|| {
+            black_box(FiniteF64::from_primitive_slice(&[f64::INFINITY]));
+        }));
+        assert!(panics(|| {
+            black_box(FiniteF64::from_primitive_slice(&[f64::NAN]));
+        }));
+
+        let values = [1.0, 2.0, 3.0];
+        let finites = FiniteF64::from_primitive_slice(&values);
+        assert_eq!(finites.as_primitive_slice(), &values);
+        assert_eq!(
+            FiniteF64::values(values).collect::<Vec<_>>(),
+            vec![ff64(1.0), ff64(2.0), ff64(3.0)]
+        );
+        assert_eq!(
+            FiniteF64::from_primitive_ranges([1.0..=2.0]).collect::<Vec<_>>(),
+            vec![ff64(1.0)..=ff64(2.0)]
+        );
+    }
 
     #[test]
     fn ordering_agrees_with_total_cmp() {
@@ -793,5 +846,119 @@ mod tests {
                 assert_eq!(value.before().after(), value);
             }
         }
+    }
+
+    #[test]
+    fn adjacency_laws_cover_f32_and_f64_edges() {
+        macro_rules! check {
+            ($name:ident, $zero:expr, $negative_subnormal:expr, $positive_subnormal:expr, $min:expr, $max:expr) => {{
+                let values = [
+                    ff32($zero),
+                    ff32($negative_subnormal),
+                    ff32($positive_subnormal),
+                    ff32(-1.0),
+                    ff32(1.0),
+                    ff32($min),
+                    ff32($max),
+                ];
+                for value in values {
+                    if value != FiniteF32::MAX {
+                        assert_eq!(value.after().before(), value);
+                    }
+                    if value != FiniteF32::MIN {
+                        assert_eq!(value.before().after(), value);
+                    }
+                }
+                assert_eq!(FiniteF32::MIN.checked_before(), None);
+                assert_eq!(FiniteF32::MAX.checked_after(), None);
+                assert_eq!(ff32($negative_subnormal).after(), ff32($zero));
+                assert_eq!(ff32($zero).after(), ff32($positive_subnormal));
+                let _ = stringify!($name);
+            }};
+        }
+
+        check!(
+            f32_edges,
+            0.0_f32,
+            -f32::from_bits(1),
+            f32::from_bits(1),
+            f32::MIN,
+            f32::MAX
+        );
+
+        let values = [
+            ff64(-f64::from_bits(1)),
+            ff64(0.0),
+            ff64(f64::from_bits(1)),
+            ff64(-1.0),
+            ff64(1.0),
+            FiniteF64::MIN,
+            FiniteF64::MAX,
+        ];
+        for value in values {
+            if value != FiniteF64::MAX {
+                assert_eq!(value.after().before(), value);
+            }
+            if value != FiniteF64::MIN {
+                assert_eq!(value.before().after(), value);
+            }
+        }
+        assert_eq!(FiniteF64::MIN.checked_before(), None);
+        assert_eq!(FiniteF64::MAX.checked_after(), None);
+        assert_eq!(ff64(-f64::from_bits(1)).after(), ff64(0.0));
+        assert_eq!(ff64(0.0).after(), ff64(f64::from_bits(1)));
+    }
+
+    #[test]
+    fn range_length_laws_cover_f32_and_f64() {
+        let start = ff32(-f32::from_bits(1));
+        let end = ff32(f32::from_bits(1));
+        assert_eq!(FiniteF32::safe_len(&(start..=start)), 1);
+        assert_eq!(FiniteF32::safe_len(&(start..=start.after())), 2);
+        assert_eq!(FiniteF32::safe_len(&(start..=end)), 3);
+        assert_eq!(
+            FiniteF32::MAX_SIZE,
+            FiniteF32::safe_len(&(FiniteF32::MIN..=FiniteF32::MAX))
+        );
+        let length = 17;
+        let endpoint = start.inclusive_end_from_start(length);
+        assert_eq!(endpoint.start_from_inclusive_end(length), start);
+        assert_eq!(start.inclusive_end_from_start(length), endpoint);
+
+        let start = ff64(-f64::from_bits(1));
+        let end = ff64(f64::from_bits(1));
+        assert_eq!(FiniteF64::safe_len(&(start..=start)), 1);
+        assert_eq!(FiniteF64::safe_len(&(start..=start.after())), 2);
+        assert_eq!(FiniteF64::safe_len(&(start..=end)), 3);
+        assert_eq!(
+            FiniteF64::MAX_SIZE,
+            FiniteF64::safe_len(&(FiniteF64::MIN..=FiniteF64::MAX))
+        );
+        let length = 17;
+        let endpoint = start.inclusive_end_from_start(length);
+        assert_eq!(endpoint.start_from_inclusive_end(length), start);
+        assert_eq!(start.inclusive_end_from_start(length), endpoint);
+    }
+
+    #[cfg(feature = "total_float_nightly_experimental")]
+    #[test]
+    fn f16_finite_adjacency_and_lengths_are_exhaustive() {
+        for bits in 0..=u16::MAX {
+            let value = f16::from_bits(bits);
+            let Some(value) = FiniteF16::try_new(value) else {
+                continue;
+            };
+            if value != FiniteF16::MIN {
+                assert_eq!(value.before().after(), value);
+            }
+            if value != FiniteF16::MAX {
+                assert_eq!(value.after().before(), value);
+            }
+            assert_eq!(FiniteF16::safe_len(&(value..=value)), 1);
+        }
+        assert_eq!(
+            FiniteF16::MAX_SIZE,
+            FiniteF16::safe_len(&(FiniteF16::MIN..=FiniteF16::MAX))
+        );
     }
 }

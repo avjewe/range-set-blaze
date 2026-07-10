@@ -31,9 +31,10 @@ jobs:
           components: rust-src
       - name: Test Rust Native (stable)
         run: |
-          cargo clippy --verbose --all-targets --features "std rog_experimental" -- -D clippy::all -A deprecated
+          cargo clippy --verbose --all-targets --features "std rog_experimental total_float_experimental" -- -D clippy::all -A deprecated
           cargo test --verbose
           cargo test --verbose --release
+          cargo test --verbose --release --features "std total_float_experimental"
           cargo test --verbose --no-default-features --features "rog_experimental"
           cargo test --verbose --features "std total_float_experimental"
           cargo test --verbose --features "std rog_experimental total_float_experimental"
@@ -134,3 +135,4 @@ jobs:
           cargo check --verbose
           cargo check --verbose --no-default-features --features "rog_experimental"
           cargo check --verbose --features "std total_float_experimental"
+          cargo check --verbose --no-default-features --features "total_float_experimental"

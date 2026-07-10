@@ -50,6 +50,9 @@ The crate's main traits are
 [2]: https://docs.rs/range-set-blaze/latest/range_set_blaze/trait.SortedDisjoint.html#table-of-contents
 [3]: https://docs.rs/range-set-blaze/latest/range_set_blaze/trait.SortedDisjointMap.html#table-of-contents
 
+no_std, WASM, and embedded
+--------------------------
+
 The crate supports `no_std`, WASM, and embedded (with alloc) projects. For `no_std`, etc., Use the command:
 
 ```bash
@@ -204,6 +207,26 @@ for range in intron.ranges() {
     println!("{chrom}\t{start}\t{end}");
 }
 ```
+
+Features
+--------
+
+The available Cargo features are:
+
+* `default` — Enables the `std` feature. Use `--no-default-features` for a `no_std` build.
+* `std` — Enables `std`-specific conveniences and trait implementations. The crate's core functionality remains available with `no_std` and `alloc`; see [the `no_std` usage above](#no_std-wasm-and-embedded).
+* `rog_experimental` — Enables the experimental [`Rog` (range-or-gap) type][`Rog`]. Its API may change or be removed in a future release.
+* `total_float_experimental` — Enables experimental floating-point range support for `f32` and `f64`; see the [floating-point module documentation][floating-point documentation].
+* `total_float_nightly_experimental` — Enables the nightly-only `f16` and `f128` floating-point wrappers in addition to `total_float_experimental`; see the [floating-point module documentation][floating-point documentation]. This requires a nightly Rust compiler.
+* `from_slice` — Enables the nightly-only [`RangeSetBlaze::from_slice`][`RangeSetBlaze::from_slice`] constructor, which can speed up construction from array-like collections using SIMD where available.
+* `test_util` — Exposes the crate's [hidden testing utilities][`test_util` source] and enables its optional [`rand` dependency][`rand`]. This feature is intended for tests and development, not normal application use.
+* `rand` — Enables the optional [`rand` dependency][`rand] directly. This implicit Cargo feature is normally enabled through `test_util` instead.
+
+[`Rog`]: https://docs.rs/range-set-blaze/latest/range_set_blaze/struct.Rog.html
+[floating-point documentation]: https://docs.rs/range-set-blaze/latest/range_set_blaze/float/index.html
+[`RangeSetBlaze::from_slice`]: https://docs.rs/range-set-blaze/latest/range_set_blaze/struct.RangeSetBlaze.html#method.from_slice
+[`rand`]: https://docs.rs/rand/latest/rand/
+[`test_util` source]: https://github.com/CarlKCarlK/range-set-blaze/blob/main/src/test_util.rs
 
 ## Contributing
 
