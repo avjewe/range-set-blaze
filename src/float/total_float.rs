@@ -91,7 +91,9 @@ pub trait TotalFloat:
                 "b must be in range 1..=max_len (b = {b}, max_len = {max_len})"
             );
         }
-        // If b is in range, two’s-complement wrap-around yields the correct inclusive end even if the add overflows
+        // `Ordered` is a signed integer whose wrapping distance matches the total float order.
+        // Because the debug precondition bounds `b` by the remaining domain, modular addition
+        // lands on the correct endpoint even when the signed representation overflows.
         Self::from_ordered(Self::to_ordered(a).wrapping_add(&Self::safe_as_ordered(b)))
     }
     /// Computes `self - (b - 1)` where `b` is of type [`TotalFloat::SafeLen`].
@@ -104,7 +106,9 @@ pub trait TotalFloat:
                 "b must be in range 1..=max_len (b = {b}, max_len = {max_len})"
             );
         }
-        // If b is in range, two’s-complement wrap-around yields the correct start even if the sub overflows
+        // `Ordered` is a signed integer whose wrapping distance matches the total float order.
+        // Because the debug precondition bounds `b` by the distance from `MIN`, modular
+        // subtraction lands on the correct endpoint even when the signed representation underflows.
         Self::from_ordered(Self::to_ordered(a).wrapping_sub(&Self::safe_as_ordered(b)))
     }
     /// Return the size of the inclusive range from start to end.

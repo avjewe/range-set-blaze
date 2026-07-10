@@ -309,6 +309,35 @@ fn test_inclusive_nightly() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn inclusive_endpoints_cross_zero() {
+    syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
+        $(
+            let start = <$ty>::new(-1.0);
+            let end = <$ty>::new(1.0);
+            let len = <$ty>::safe_len(&(start..=end));
+            assert_eq!(<$ty>::inclusive_end_from_start(start, len), end);
+            assert_eq!(<$ty>::start_from_inclusive_end(end, len), start);
+        )*
+    }}
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn inclusive_endpoints_cross_zero_nightly() {
+    syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
+        $(
+            let start = <$ty>::new(-1.0);
+            let end = <$ty>::new(1.0);
+            let len = <$ty>::safe_len(&(start..=end));
+            assert_eq!(<$ty>::inclusive_end_from_start(start, len), end);
+            assert_eq!(<$ty>::start_from_inclusive_end(end, len), start);
+        )*
+    }}
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_floats2() {
     syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
         $(

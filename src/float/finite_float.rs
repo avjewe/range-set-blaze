@@ -113,7 +113,10 @@ pub trait FiniteFloat:
                 "b must be in range 1..=max_len (b = {b}, max_len = {max_len})"
             );
         }
-        // If b is in range, two’s-complement wrap-around yields the correct inclusive end even if the add overflows
+        // `Ordered` is a signed integer whose wrapping distance matches the total float order.
+        // Because the debug precondition bounds `b` by the remaining finite domain, modular
+        // addition lands on the correct endpoint even when the signed representation overflows.
+        // The following correction removes the excluded `-0.0` slot from that distance.
         let start = Self::to_ordered(a);
         let mut end = start.wrapping_add(&Self::safe_as_ordered(b));
         if Self::crosses_neg_zero(start, end) {
@@ -131,7 +134,10 @@ pub trait FiniteFloat:
                 "b must be in range 1..=max_len (b = {b}, max_len = {max_len})"
             );
         }
-        // If b is in range, two’s-complement wrap-around yields the correct start even if the sub overflows
+        // `Ordered` is a signed integer whose wrapping distance matches the total float order.
+        // Because the debug precondition bounds `b` by the distance from `MIN`, modular
+        // subtraction lands on the correct endpoint even when the signed representation underflows.
+        // The following correction removes the excluded `-0.0` slot from that distance.
         let end = Self::to_ordered(a);
         let mut start = end.wrapping_sub(&Self::safe_as_ordered(b));
         if Self::crosses_neg_zero(start, end) {
