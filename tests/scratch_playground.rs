@@ -11,6 +11,7 @@ use range_set_blaze::{FiniteF32, FiniteF64, TotalF32, TotalF64};
 /// `TotalF32` to manufacture "the Ordered position of NaN/-0.0/+Infinity"
 /// and hand it straight to `FiniteF32::from_ordered` to see what comes out.
 #[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch7_from_ordered_bug() {
     let nan_ordered = TotalF32::new(f32::NAN).to_ordered();
     let broken = FiniteF32::from_ordered(nan_ordered);
@@ -74,6 +75,7 @@ macro_rules! impl_before_after {
 impl_before_after!(FiniteF32, FiniteF64, TotalF32, TotalF64);
 
 #[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch() {
     let set = RangeSetBlaze::from_iter([ff32(2.0)..=ff32(2.0)]);
     println!("set: {set:?}");
@@ -84,6 +86,7 @@ fn scratch() {
 }
 
 #[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch2() {
     let epsilon = ff32(f32::EPSILON);
     println!("epsilon: {epsilon:?}");
@@ -93,6 +96,7 @@ fn scratch2() {
 }
 
 #[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch3() {
     let zero = ff32(-0.0);
     println!("zero: {zero:?}");
@@ -104,6 +108,7 @@ fn scratch3() {
 }
 
 #[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch4() {
     let one = ff32(1.0);
     println!("one: {one:?}");
@@ -118,6 +123,7 @@ fn scratch4() {
 }
 
 #[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch5_before_after() {
     // The idiom under test: exclusive bounds (2.0, 5.0) expressed as an
     // inclusive range via .after()/.before() instead of .next()/.prev().
@@ -136,6 +142,7 @@ fn scratch5_before_after() {
 }
 
 #[test]
+#[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch6_tiny() {
     // TINY, per std's own next_up()/next_down() docs: "the smallest
     // representable positive f32" — i.e. the smallest positive *subnormal*,

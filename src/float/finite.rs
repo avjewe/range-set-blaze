@@ -31,17 +31,6 @@ use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 #[cfg(feature = "from_slice")]
 use crate::RangeSetBlaze;
 
-// TODO000 This crate's public API should not return `Result` (see AGENTS.md, "Error Handling").
-// This `Error` enum has exactly one variant, so it's a plain yes/no condition — consider
-// replacing `Finite::try_new`'s `Result<Self, Error>` with `Option<Self>` and dropping this
-// enum, unless a `TryFrom`/`TryInto` impl truly requires the `Result` shape.
-/// Error type, only used for [`TryFrom`] implementations.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Error {
-    /// The float is not finite (NaN or infinity).
-    FiniteFloatIsNotFinite,
-}
-
 /// Total ordered f64, excluding NaN, -0.0, and infinities.
 pub type FiniteF64 = Finite<f64>;
 /// Total ordered f32, excluding NaN, -0.0, and infinities.
@@ -153,22 +142,18 @@ impl<T: FiniteFloat> Finite<T> {
 
     /// Creates a new [`Finite`] from a primitive float.
     ///
+    /// Returns `None` if the float is not finite (NaN or infinity).
+    ///
     /// # Examples
     /// ```
     /// use range_set_blaze::FiniteF64;
-    /// use range_set_blaze::finite::Error;
     ///
-    /// assert_eq!(FiniteF64::try_new(1.0), Ok(FiniteF64::new(1.0)));
-    /// assert_eq!(FiniteF64::try_new(f64::NAN), Err(Error::FiniteFloatIsNotFinite));
+    /// assert_eq!(FiniteF64::try_new(1.0), Some(FiniteF64::new(1.0)));
+    /// assert_eq!(FiniteF64::try_new(f64::NAN), None);
     /// ```
-    /// # Errors
-    /// Returns `Error::FiniteFloatIsNotFinite` if the float is not finite (NaN or infinity).
-    pub fn try_new(x: T::Primitive) -> Result<Self, Error> {
-        if T::is_finite(x) {
-            Ok(Self(T::normalize(x)))
-        } else {
-            Err(Error::FiniteFloatIsNotFinite)
-        }
+    #[must_use]
+    pub fn try_new(x: T::Primitive) -> Option<Self> {
+        T::is_finite(x).then(|| Self(T::normalize(x)))
     }
 
     /// Computes `self + (b - 1)` where `b` is of type `SafeLen`.

@@ -82,9 +82,11 @@ with it.
 ## Comment and TODO Conventions
 
 - Plain `TODO` means non-blocking/future work.
-- When changing code, don't remove existing `TODO` comments just because you touched nearby
-  code; move them if the code moves, or append `(may no longer apply)` if you believe they're
-  stale rather than deleting them outright.
+- Never delete `TODO`/`TODO0`/`TODO000` (or similarly numbered `todo`) comments from the
+  codebase, even when refactoring the surrounding code or implementing the work the comment
+  describes. These are intentional reminders the user placed deliberately. Only remove one when
+  the user explicitly asks you to close it out. If code moves, move the comment with it; if you
+  believe it's stale, append `(may no longer apply)` rather than deleting it.
 - Document non-obvious invariants (e.g. why an `unsafe` transmute is sound, why a bound is
   needed for coherence) at the point of use, not just in a commit message.
 
