@@ -25,8 +25,6 @@ use core::ops::RangeInclusive;
 
 use super::finite_float::FiniteFloat;
 use core::fmt::Debug;
-use num_traits::One;
-use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
 
 #[cfg(feature = "from_slice")]
 use crate::RangeSetBlaze;
@@ -227,19 +225,15 @@ impl<T: FiniteFloat> Finite<T> {
     /// # Panics
     ///
     /// Panics on overflow if `self` is the maximum value.
-    // TODO00: rust-version is now "1.87", so f32/f64::next_up() (stable since
-    // 1.86) is available. Consider delegating to T::Primitive::next_up() here
-    // instead of the manual to_ordered/wrapping_add/from_ordered round-trip
-    // (still need the -0.0 skip check, just phrased on the primitive value).
     #[must_use]
     pub fn next(self) -> Self {
         debug_assert!(self != Self::MAX, "next() called on maximum value");
-        let mut ordered = self.to_ordered();
-        ordered = ordered.wrapping_add(&T::Ordered::one());
-        if ordered == T::NEG_ZERO_ORDERED {
-            ordered = ordered.wrapping_add(&T::Ordered::one());
+        let up = T::next_up(self.0);
+        if T::is_neg_zero(up) {
+            Self(T::normalize(up))
+        } else {
+            Self(up)
         }
-        Self::from_ordered(ordered)
     }
 
     /// Returns the previous float.
@@ -254,20 +248,15 @@ impl<T: FiniteFloat> Finite<T> {
     /// # Panics
     ///
     /// Panics on underflow if `self` is the minimum value.
-    // TODO00: rust-version is now "1.87", so f32/f64::next_down() (stable
-    // since 1.86) is available. Consider delegating to T::Primitive::
-    // next_down() here instead of the manual to_ordered/wrapping_sub/
-    // from_ordered round-trip (still need the -0.0 skip check, just phrased
-    // on the primitive value).
     #[must_use]
     pub fn prev(self) -> Self {
         debug_assert!(self != Self::MIN, "prev() called on minimum value");
-        let mut ordered = self.to_ordered();
-        ordered = ordered.wrapping_sub(&T::Ordered::one());
-        if ordered == T::NEG_ZERO_ORDERED {
-            ordered = ordered.wrapping_sub(&T::Ordered::one());
+        let down = T::next_down(self.0);
+        if T::is_neg_zero(down) {
+            Self(T::normalize(down))
+        } else {
+            Self(down)
         }
-        Self::from_ordered(ordered)
     }
 
     /// Returns the next float.

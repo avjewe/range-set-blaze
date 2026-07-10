@@ -130,6 +130,12 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
     fn is_finite(x: Self::Primitive) -> bool;
     /// Turn negative zero into positive zero, leave other numbers unchanged.
     fn normalize(x: Self::Primitive) -> Self::Primitive;
+    /// Returns the least float strictly greater than `x` (`x.next_up()`).
+    fn next_up(x: Self::Primitive) -> Self::Primitive;
+    /// Returns the greatest float strictly less than `x` (`x.next_down()`).
+    fn next_down(x: Self::Primitive) -> Self::Primitive;
+    /// Returns true if `x`'s bit pattern is that of negative zero.
+    fn is_neg_zero(x: Self::Primitive) -> bool;
 }
 
 macro_rules! impl_finite_ops {
@@ -195,6 +201,18 @@ macro_rules! impl_finite_ops {
             } else {
                 x
             }
+        }
+
+        fn next_up(x: Self::Primitive) -> Self::Primitive {
+            x.next_up()
+        }
+
+        fn next_down(x: Self::Primitive) -> Self::Primitive {
+            x.next_down()
+        }
+
+        fn is_neg_zero(x: Self::Primitive) -> bool {
+            x.to_bits() == Self::NEG_ZERO_BITS
         }
     };
 }
