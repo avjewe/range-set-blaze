@@ -63,8 +63,12 @@ pre-commit: clippy
 # `[package.metadata.docs.rs]` in Cargo.toml.
 # Uses `cargo +nightly` because docs.rs itself always builds with nightly --
 # `from_slice`'s `feature(portable_simd)` won't compile on stable otherwise.
-doc:
+show-docs:
     cargo +nightly doc --no-deps --open --features "std,rog_experimental,total_float_experimental,from_slice,test_util"
+
+# Rebuild the docs (same features as `show-docs`) without opening a browser
+update-docs:
+    cargo +nightly doc --no-deps --features "std,rog_experimental,total_float_experimental,from_slice,test_util"
 
 # Check documentation for dead links (requires cargo-deadlinks)
 doc-links:

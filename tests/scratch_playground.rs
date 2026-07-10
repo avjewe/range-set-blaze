@@ -296,49 +296,37 @@ fn scratch14_total_slice_roundtrip() {
 #[test]
 #[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch15_merge_float_intervals() {
-    // A realistic use case: merge ~10 overlapping/adjacent float intervals
-    // (e.g. sensor active-windows, timestamps with tolerance) into their
-    // disjoint union, then read the merged result back out as a
-    // `Vec<RangeInclusive<f64>>` of plain primitives -- no `Finite`/`Total`
-    // types visible to the caller at either boundary.
-    //
-    // (Individual float *points* essentially never coalesce -- two floats
-    // only merge into one run if they're float-adjacent, i.e. `a.after() ==
-    // b`, not just numerically close. Intervals with real width, like these,
-    // are the case that actually benefits from `RangeSetBlaze`.)
-    let intervals: Vec<(f64, f64)> = vec![
-        (1.0, 3.0),
-        (2.5, 4.0),
-        (5.0, 6.0),
-        (5.5, 7.0),
-        (10.0, 12.0),
+    // Turn a bunch of overlapping and adjacent inclusive primitive ranges into a
+    // coalesced set of disjoint inclusive ranges.
+    let overlapping_intervals = vec![
         (11.0, 13.0),
-        (15.0, 15.0),
-        (20.0, 22.0),
-        (21.0, 25.0),
+        (1.0, 3.0),
         (30.0, 31.0),
+        (5.5, 9.0),
+        (-4.0, 2.0),
+        (15.0, 15.0),
+        (7.0, 7.5),
+        (21.0, 28.0),
+        (2.5, 6.0),
+        (19.0, 22.0),
     ];
 
-    let set = RangeSetBlaze::from_iter(FiniteF64::from_primitive_ranges(
-        intervals.into_iter().map(|(start, end)| start..=end),
-    ));
-    println!("set: {set:?}");
-
-    let primitive_ranges: Vec<std::ops::RangeInclusive<f64>> = set
-        .ranges()
-        .map(FiniteRangeExt::into_primitive_range)
+    let disjoint_intervals: Vec<_> = overlapping_intervals
+        .into_iter()
+        .map(|(s, e)| FiniteF64::from_primitive_range(s..=e)) // Wrap each range
+        .collect::<RangeSetBlaze<_>>() // Coalesce into disjoint ranges
+        .ranges() // Convert back
+        .map(FiniteRangeExt::into_primitive_inner)
         .collect();
-    println!("primitive_ranges: {primitive_ranges:?}");
 
     assert_eq!(
-        primitive_ranges,
+        disjoint_intervals,
         vec![
-            1.0..=4.0,
-            5.0..=7.0,
-            10.0..=13.0,
-            15.0..=15.0,
-            20.0..=25.0,
-            30.0..=31.0
+            (-4.0, 9.0),
+            (11.0, 13.0),
+            (15.0, 15.0),
+            (19.0, 28.0),
+            (30.0, 31.0)
         ]
     );
 }

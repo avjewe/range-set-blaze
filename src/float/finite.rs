@@ -4,20 +4,6 @@
 //!
 //! Enable with `total_float_experimental` (stable, `FiniteF32`/`FiniteF64`) and
 //! `total_float_nightly_experimental` (nightly, adds `FiniteF16`/`FiniteF128`).
-//!```
-//! use range_set_blaze::{RangeSetBlaze, FiniteF64, FiniteF32};
-//! let set = RangeSetBlaze::from_iter([FiniteF64::new(3.0)..=FiniteF64::new(5.0)]);
-//! assert!(set.contains(FiniteF64::new(3.1)));
-//! assert!(!set.contains(FiniteF64::new(2.9)));
-//!
-//! let set = RangeSetBlaze::from(FiniteF64::from_primitive_range(3.0..=5.0));
-//! assert!(set.contains(FiniteF64::new(4.9)));
-//! assert!(!set.contains(FiniteF64::new(5.1)));
-//!
-//! let set = RangeSetBlaze::from_iter(FiniteF32::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
-//! assert!(set.contains(FiniteF32::new(4.0)));
-//! assert!(!set.contains(FiniteF32::new(6.0)));
-//!```
 
 use core::{
     cmp::Ordering,
@@ -73,6 +59,22 @@ pub fn ff128(x: f128) -> FiniteF128 {
 /// Experimental: A transparent wrapper around [`f64`] and friends with total ordering.
 ///
 /// Comparison, equality, and hashing all agree with `total_cmp`.
+///
+/// # Basic Usage
+/// ```
+/// use range_set_blaze::{RangeSetBlaze, FiniteF64, FiniteF32};
+/// let set = RangeSetBlaze::from_iter([FiniteF64::new(3.0)..=FiniteF64::new(5.0)]);
+/// assert!(set.contains(FiniteF64::new(3.1)));
+/// assert!(!set.contains(FiniteF64::new(2.9)));
+///
+/// let set = RangeSetBlaze::from(FiniteF64::from_primitive_range(3.0..=5.0));
+/// assert!(set.contains(FiniteF64::new(4.9)));
+/// assert!(!set.contains(FiniteF64::new(5.1)));
+///
+/// let set = RangeSetBlaze::from_iter(FiniteF32::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
+/// assert!(set.contains(FiniteF32::new(4.0)));
+/// assert!(!set.contains(FiniteF32::new(6.0)));
+/// ```
 ///
 /// # Enabling
 ///

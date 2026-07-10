@@ -8,7 +8,47 @@
 //!
 //! Each of those is available in four sizes: 16, 32, 64 and 128.
 //!
-//! ## Small Example
+//! ## Example: Merging Overlapping Intervals
+//!
+//! Turn a list of unsorted, overlapping f64 intervals (inclusive) into
+//! a sorted list of disjoint intervals (still inclusive).
+//!```
+//! use range_set_blaze::{RangeSetBlaze, FiniteF64, finite::FiniteRangeExt};
+//!
+//! let overlapping_intervals = vec![
+//!     (11.0, 13.0),
+//!     (1.0, 3.0),
+//!     (30.0, 31.0),
+//!     (5.5, 9.0),
+//!     (-4.0, 2.0),
+//!     (15.0, 15.0),
+//!     (7.0, 7.5),
+//!     (21.0, 28.0),
+//!     (2.5, 6.0),
+//!     (19.0, 22.0),
+//! ];
+//!
+//! let disjoint_intervals: Vec<_> = overlapping_intervals
+//!     .into_iter()
+//!     .map(|(s, e)| FiniteF64::from_primitive_range(s..=e)) // Wrap each range
+//!     .collect::<RangeSetBlaze<_>>() // Coalesce into disjoint ranges
+//!     .ranges() // Convert back
+//!     .map(FiniteRangeExt::into_primitive_inner)
+//!     .collect();
+//!
+//! assert_eq!(
+//!     disjoint_intervals,
+//!     vec![
+//!         (-4.0, 9.0),
+//!         (11.0, 13.0),
+//!         (15.0, 15.0),
+//!         (19.0, 28.0),
+//!         (30.0, 31.0)
+//!     ]
+//! );
+//!```
+//!
+//! ## Example: Wrapping Primitive (e.g. f32, f64) Ranges
 //!
 //!```
 //! use range_set_blaze::{RangeSetBlaze, FiniteF64, TotalF32, TotalF64};
@@ -25,16 +65,14 @@
 //! assert!(!set.contains(TotalF32::new(6.0)));
 //!```
 //!
-//! ## Large Example
-//!
+//! ## Example: Coalescing Over Two Billion f32's
 #![doc = concat!(
     "````rust,no_run\n",
     include_str!("../examples/float_maps.rs"),
     "\n````"
 )]
-//!
-//! ## Total Float Example
-//!
+//! ## Example: Total Floats
+//! 
 //! Unlike `Finite`, `Total` uses `total_cmp` order, so it can also represent
 //! NaN, the infinities, and -0.0 as distinct, orderable values. This example
 //! builds a category map over all of `f64` from nothing but
