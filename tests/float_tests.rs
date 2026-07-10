@@ -23,8 +23,29 @@ use syntactic_for::syntactic_for;
 use wasm_bindgen_test::*;
 wasm_bindgen_test_configure!(run_in_browser);
 
+const CONST_FINITE_F32: FiniteF32 = ff32(1.0);
+const CONST_FINITE_F64: FiniteF64 = ff64(-0.0);
+#[cfg(feature = "total_float_nightly_experimental")]
+const CONST_FINITE_F16: FiniteF16 = ff16(1.0);
+#[cfg(feature = "total_float_nightly_experimental")]
+const CONST_FINITE_F128: FiniteF128 = ff128(-0.0);
 #[cfg(feature = "total_float_nightly_experimental")]
 const BIG_ZERO: UIntPlusOne<u128> = UIntPlusOne::<u128>::UInt(0);
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn finite_shorthands_are_const() {
+    assert_eq!(CONST_FINITE_F32, ff32(1.0));
+    assert_eq!(CONST_FINITE_F64.into_inner().to_bits(), 0.0_f64.to_bits());
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+#[cfg(feature = "total_float_nightly_experimental")]
+fn finite_nightly_shorthands_are_const() {
+    assert_eq!(CONST_FINITE_F16, ff16(1.0));
+    assert_eq!(CONST_FINITE_F128.into_inner().to_bits(), 0.0_f128.to_bits());
+}
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]

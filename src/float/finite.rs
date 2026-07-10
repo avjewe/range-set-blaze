@@ -32,29 +32,62 @@ pub type FiniteF128 = Finite<f128>;
 
 /// Construct a [`FiniteF64`] from an `f64`. Shorthand for [`FiniteF64::new`]
 #[must_use]
-pub fn ff64(x: f64) -> FiniteF64 {
-    FiniteF64::new(x)
+pub const fn ff64(x: f64) -> FiniteF64 {
+    finite_f64(x)
 }
 
 /// Construct a [`FiniteF32`] from an `f32`. Shorthand for [`FiniteF32::new`]
 #[must_use]
-pub fn ff32(x: f32) -> FiniteF32 {
-    FiniteF32::new(x)
+pub const fn ff32(x: f32) -> FiniteF32 {
+    finite_f32(x)
 }
 
 /// Construct a [`FiniteF16`] from an `f16`. Shorthand for [`FiniteF16::new`]
 #[cfg(feature = "total_float_nightly_experimental")]
 #[must_use]
-pub fn ff16(x: f16) -> FiniteF16 {
-    FiniteF16::new(x)
+pub const fn ff16(x: f16) -> FiniteF16 {
+    finite_f16(x)
 }
 
 /// Construct a [`FiniteF128`] from an `f128`. Shorthand for [`FiniteF128::new`]
 #[cfg(feature = "total_float_nightly_experimental")]
 #[must_use]
-pub fn ff128(x: f128) -> FiniteF128 {
-    FiniteF128::new(x)
+pub const fn ff128(x: f128) -> FiniteF128 {
+    finite_f128(x)
 }
+
+// TODO When const trait methods are stable, make the generic Finite constructors and other
+// eligible methods const, then have these shorthands call Finite::new directly.
+macro_rules! finite_const_constructor {
+    ($name:ident, $primitive:ty, $finite:ty, $bits:ty, $exponent_mask:expr) => {
+        const fn $name(x: $primitive) -> $finite {
+            let bits = x.to_bits();
+            assert!(
+                bits & $exponent_mask != $exponent_mask,
+                "Finite type requires a finite value"
+            );
+            let normalized = if bits == (-0.0 as $primitive).to_bits() {
+                0.0
+            } else {
+                x
+            };
+            Finite(normalized)
+        }
+    };
+}
+
+finite_const_constructor!(finite_f64, f64, FiniteF64, u64, 0x7ff0_0000_0000_0000);
+finite_const_constructor!(finite_f32, f32, FiniteF32, u32, 0x7f80_0000);
+#[cfg(feature = "total_float_nightly_experimental")]
+finite_const_constructor!(finite_f16, f16, FiniteF16, u16, 0x7c00);
+#[cfg(feature = "total_float_nightly_experimental")]
+finite_const_constructor!(
+    finite_f128,
+    f128,
+    FiniteF128,
+    u128,
+    0x7fff_0000_0000_0000_0000_0000_0000_0000
+);
 
 /// Experimental: A transparent wrapper around [`f64`] and friends with total ordering.
 ///
