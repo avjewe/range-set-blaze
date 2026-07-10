@@ -39,6 +39,30 @@ public-API quality matter more here than in an experimental project.
 - If warnings are caused by obsolete code, delete or refactor the obsolete code instead of
   hiding the warning.
 
+## Type Invariants
+
+- Some types document a public invariant narrower than their raw representation allows — e.g.
+  `Finite<T>` (`src/float/finite.rs`) claims "only finite values, with zero canonicalized to
+  `+0.0`, are legal" even though its representation is a full `f64`/`f32`. For these types, any
+  **safe** method that could otherwise construct or return a value violating that invariant must
+  guard the precondition with an unconditional `assert!` (checked in release builds too), or must
+  itself be `unsafe fn` with a `# Safety` doc explaining the precondition the caller must uphold.
+  `debug_assert!`-only checking is not acceptable for these methods, because it lets 100% safe
+  code break the invariant in release builds — silently contradicting doc comments like
+  `new_unchecked`'s that promise safe code can never do that.
+- This does *not* apply to types whose "invariant" is just being a valid instance of their own
+  representation, with no narrower legal subset — e.g. plain integers (`i32`, `u32`, ...) or
+  `Total<T>` (whose legal domain equals its entire `Ordered` bit-width, including infinities). For
+  those, wrapping arithmetic that overflows always produces some other legal value of the same
+  type; there's nothing to break. `debug_assert!`-only preconditions are fine there and match
+  Rust's own `+`/`-` operators (panic in debug, wrap in release) — see `Integer::add_one`,
+  `Integer::inclusive_end_from_start` in `src/integer.rs`, and `FiniteFloat::inclusive_end_from_start`
+  in `src/float/finite_float.rs` (which operates on the raw primitive float, not the narrower
+  `Finite<T>` wrapper).
+- When adding or reviewing a method on an invariant-bearing type, ask: "if the caller passes an
+  out-of-precondition argument, can the *type-level* invariant (not just the numeric answer) end
+  up wrong?" If yes, it needs a hard `assert!` or `unsafe fn`, not `debug_assert!`.
+
 ## Error Handling
 
 - This is a data structure crate in the spirit of `BTreeSet`/`BTreeMap`/`HashSet`: the public API

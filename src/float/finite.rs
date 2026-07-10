@@ -18,6 +18,7 @@ use super::finite_float::FiniteFloat;
 use crate::Integer;
 #[cfg(feature = "from_slice")]
 use crate::RangeSetBlaze;
+use num_traits::Zero;
 
 /// Total ordered f64, excluding NaN, -0.0, and infinities.
 pub type FiniteF64 = Finite<f64>;
@@ -223,25 +224,33 @@ impl<T: FiniteFloat> Finite<T> {
 
     /// Computes `self + (b - 1)` where `b` is of type `SafeLen`.
     ///
-    /// # Precondition
-    /// `b` must be small enough that the result stays within range for `T`. This is
-    /// checked with `debug_assert!` and is *not* checked in release builds, where
-    /// violating it produces an unspecified (nonsense, but not unsafe) result rather
-    /// than a panic. Callers are expected to only ever pass a `b` that satisfies this.
+    /// # Panics
+    /// Panics if `b` is not small enough that the result stays within range for `T`
+    /// (checked unconditionally, in both debug and release builds, so safe code can
+    /// never construct a `Finite` value that breaks its invariant this way).
     #[must_use]
     pub fn inclusive_end_from_start(self, b: T::SafeLen) -> Self {
+        let max_len = T::prim_safe_len(self.0, T::MAX);
+        assert!(
+            !b.is_zero() && b <= max_len,
+            "b must be in range 1..=max_len"
+        );
         Self(T::inclusive_end_from_start(self.0, b))
     }
 
     /// Computes `self - (b - 1)` where `b` is of type `SafeLen`.
     ///
-    /// # Precondition
-    /// `b` must be small enough that the result stays within range for `T`. This is
-    /// checked with `debug_assert!` and is *not* checked in release builds, where
-    /// violating it produces an unspecified (nonsense, but not unsafe) result rather
-    /// than a panic. Callers are expected to only ever pass a `b` that satisfies this.
+    /// # Panics
+    /// Panics if `b` is not small enough that the result stays within range for `T`
+    /// (checked unconditionally, in both debug and release builds, so safe code can
+    /// never construct a `Finite` value that breaks its invariant this way).
     #[must_use]
     pub fn start_from_inclusive_end(self, b: T::SafeLen) -> Self {
+        let max_len = T::prim_safe_len(T::MIN, self.0);
+        assert!(
+            !b.is_zero() && b <= max_len,
+            "b must be in range 1..=max_len"
+        );
         Self(T::start_from_inclusive_end(self.0, b))
     }
 
@@ -319,12 +328,12 @@ impl<T: FiniteFloat> Finite<T> {
     ///
     /// # Panics
     ///
-    /// In debug builds, panics if `self` is the maximum value. In release
-    /// builds, returns an infinite value instead, violating the `Finite`
-    /// invariant of this type.
+    /// Panics if `self` is the maximum value (checked unconditionally, in both debug
+    /// and release builds, so safe code can never construct a `Finite` value that
+    /// breaks its invariant this way).
     #[must_use]
     pub fn after(self) -> Self {
-        debug_assert!(self != Self::MAX, "after() called on maximum value");
+        assert!(self != Self::MAX, "after() called on maximum value");
         Self(T::normalize(T::next_up(self.0)))
     }
 
@@ -339,12 +348,12 @@ impl<T: FiniteFloat> Finite<T> {
     ///
     /// # Panics
     ///
-    /// In debug builds, panics if `self` is the minimum value. In release
-    /// builds, returns an infinite value instead, violating the `Finite`
-    /// invariant of this type.
+    /// Panics if `self` is the minimum value (checked unconditionally, in both debug
+    /// and release builds, so safe code can never construct a `Finite` value that
+    /// breaks its invariant this way).
     #[must_use]
     pub fn before(self) -> Self {
-        debug_assert!(self != Self::MIN, "before() called on minimum value");
+        assert!(self != Self::MIN, "before() called on minimum value");
         Self(T::normalize(T::next_down(self.0)))
     }
 
@@ -758,12 +767,21 @@ mod tests {
     }
 
     #[test]
-    fn after_and_before_wrap() {
-        // These should be true in release mode, but panic in debug as expected
-        // assert_eq!(FiniteF64::MAX.after(), FiniteF64::MIN);
-        // assert_eq!(FiniteF64::MIN.before(), FiniteF64::MAX);
+    fn after_and_before_panic_at_boundaries_in_all_build_modes() {
         assert_eq!(FiniteF64::MAX.checked_after(), None);
         assert_eq!(FiniteF64::MIN.checked_before(), None);
+    }
+
+    #[test]
+    #[should_panic(expected = "after() called on maximum value")]
+    fn after_panics_at_max() {
+        let _ = FiniteF64::MAX.after();
+    }
+
+    #[test]
+    #[should_panic(expected = "before() called on minimum value")]
+    fn before_panics_at_min() {
+        let _ = FiniteF64::MIN.before();
     }
 
     #[test]
