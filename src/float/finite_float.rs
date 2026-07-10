@@ -258,6 +258,7 @@ impl FiniteFloat for f64 {
     type Ordered = i64;
     type SafeLen = u64;
 
+    // Finite bit patterns, with the -0.0 slot collapsed into +0.0.
     const MAX_SIZE: Self::SafeLen = 0xFFE0_0000_0000_0000_u64 - 1;
 
     fn from_ordered(bits: Self::Ordered) -> Self {
@@ -272,6 +273,7 @@ impl FiniteFloat for f32 {
     type Ordered = i32;
     type SafeLen = u32;
 
+    // Finite bit patterns, with the -0.0 slot collapsed into +0.0.
     const MAX_SIZE: Self::SafeLen = 0xFF00_0000_u32 - 1;
 
     impl_finite_ops!(to_ordered_32);
@@ -287,6 +289,7 @@ impl FiniteFloat for f16 {
     type Ordered = i16;
     type SafeLen = u16;
 
+    // Finite bit patterns, with the -0.0 slot collapsed into +0.0.
     const MAX_SIZE: Self::SafeLen = 0xF800u16 - 1;
 
     impl_finite_ops!(to_ordered_16);
@@ -302,6 +305,7 @@ impl FiniteFloat for f128 {
     type Ordered = i128;
     type SafeLen = u128;
 
+    // Finite bit patterns, with the -0.0 slot collapsed into +0.0.
     const MAX_SIZE: Self::SafeLen = 0xFFFE_0000_0000_0000_0000_0000_0000_0000_u128 - 1;
 
     impl_finite_ops!(to_ordered_128);

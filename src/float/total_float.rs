@@ -227,6 +227,7 @@ impl TotalFloat for f64 {
 
     const MIN: Self = Self::from_bits(u64::MAX);
     const MAX: Self = Self::from_bits(0x7fff_ffff_ffff_ffff);
+    // Every 64-bit pattern is a valid total-order value, including NaNs and signed zero.
     const MAX_SIZE: Self::SafeLen = u64::MAX as Self::SafeLen + 1;
 
     impl_total_ops!(to_ordered_64);
@@ -244,6 +245,7 @@ impl TotalFloat for f32 {
 
     const MIN: Self = Self::from_bits(u32::MAX);
     const MAX: Self = Self::from_bits(0x7fff_ffff);
+    // Every 32-bit pattern is a valid total-order value, including NaNs and signed zero.
     const MAX_SIZE: Self::SafeLen = u32::MAX as Self::SafeLen + 1;
 
     impl_total_ops!(to_ordered_32);
@@ -262,6 +264,7 @@ impl TotalFloat for f16 {
 
     const MIN: Self = Self::from_bits(u16::MAX);
     const MAX: Self = Self::from_bits(0x7fff);
+    // Every 16-bit pattern is a valid total-order value, including NaNs and signed zero.
     const MAX_SIZE: Self::SafeLen = u16::MAX as Self::SafeLen + 1;
 
     impl_total_ops!(to_ordered_16);
@@ -279,6 +282,7 @@ impl TotalFloat for f128 {
 
     const MIN: Self = Self::from_bits(u128::MAX);
     const MAX: Self = Self::from_bits(0x7fff_ffff_ffff_ffff_ffff_ffff_ffff_ffff);
+    // Every 128-bit pattern is a valid total-order value, including NaNs and signed zero.
     const MAX_SIZE: Self::SafeLen = UIntPlusOne::<u128>::MaxPlusOne;
 
     impl_total_ops!(to_ordered_128);
