@@ -1,12 +1,12 @@
 //! Internal type to abstract a floating point value,
 //! providing the necessary functionality for the `Total` types to `impl Integer`.
 //!
-//! Not intended for customer use, but must be public for Rust reasons. Use `Total` instead.
+//! The public capability trait is doc-hidden and sealed; use `Total` instead.
 
 use core::{
     cmp::Ordering,
     fmt::{Debug, Display},
-    hash::Hash,
+    hash::{Hash, Hasher},
     ops::{AddAssign, SubAssign},
 };
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
@@ -19,24 +19,26 @@ mod private {
     pub trait Sealed {}
 }
 
-/// Internal implementation trait for the supported primitive total-order float types.
+/// Public capability required by the generic [`Total`](super::total::Total) APIs.
 ///
-/// This trait is sealed because its `SafeLen` and conversion methods have semantic invariants
-/// that cannot be expressed by Rust's trait bounds. Use [`Total`](super::total::Total) rather
-/// than implementing this trait directly.
+/// This trait is sealed because it is an implementation detail of the supported primitive
+/// floating-point wrappers. Use [`Total`](super::total::Total) rather than implementing it.
+#[doc(hidden)]
 pub trait TotalFloat:
     private::Sealed + Default + Copy + Clone + Debug + Send + Sync + 'static
 {
-    /// The result of `to_bits()` on the wrapped type, e.g. u64
-    type Bits: Copy + Eq + Hash + Send + Sync + Debug;
-    /// The intermediate type used for comparison, e.g. i64
-    type Ordered: WrappingAdd + WrappingSub + One + PartialEq + Copy + Send + Sync + Debug + Display;
-    /// Integral type for holding size of any range. Must hold at least one more value than `Bits`.
+    /// The minimum value in total order.
+    const MIN: Self;
+    /// The maximum value in total order.
+    const MAX: Self;
+    /// The maximum number of values in a total-order range.
+    const MAX_SIZE: Self::SafeLen;
+
+    /// Integral type for holding the size of any total-order floating-point range.
     type SafeLen: Send
         + Sync
         + Debug
         + Display
-        // Needed for Integer::SafeLen
         + Hash
         + Copy
         + PartialEq
@@ -46,6 +48,25 @@ pub trait TotalFloat:
         + AddAssign
         + SubAssign;
 
+    fn hash<H: Hasher>(x: Self, state: &mut H);
+    fn total_cmp(x: Self, y: Self) -> Ordering;
+    fn next_up(x: Self) -> Self;
+    fn next_down(x: Self) -> Self;
+    fn prim_safe_len(start: Self, end: Self) -> Self::SafeLen;
+    fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64;
+    fn f64_to_safe_len_lossy(f: f64) -> Self::SafeLen;
+    fn inclusive_end_from_start(a: Self, b: Self::SafeLen) -> Self;
+    fn start_from_inclusive_end(a: Self, b: Self::SafeLen) -> Self;
+}
+
+/// Entirely private encoding and arithmetic machinery for total-order floats.
+pub(crate) trait TotalFloatImpl:
+    TotalFloat + Default + Copy + Clone + Debug + Send + Sync + 'static
+{
+    /// The result of `to_bits()` on the wrapped type, e.g. u64
+    type Bits: Copy + Eq + Hash + Send + Sync + Debug;
+    /// The intermediate type used for comparison, e.g. i64
+    type Ordered: WrappingAdd + WrappingSub + One + PartialEq + Copy + Send + Sync + Debug + Display;
     /// The minimum value available, in the `total_cmp`  sense
     const MIN: Self;
     /// The maximum value available, in the `total_cmp`  sense
@@ -85,7 +106,7 @@ pub trait TotalFloat:
     fn inclusive_end_from_start(a: Self, b: Self::SafeLen) -> Self {
         #[cfg(debug_assertions)]
         {
-            let max_len = Self::prim_safe_len(a, Self::MAX);
+            let max_len = <Self as TotalFloatImpl>::prim_safe_len(a, <Self as TotalFloatImpl>::MAX);
             assert!(
                 Self::SafeLen::zero() < b && b <= max_len,
                 "b must be in range 1..=max_len (b = {b}, max_len = {max_len})"
@@ -100,7 +121,7 @@ pub trait TotalFloat:
     fn start_from_inclusive_end(a: Self, b: Self::SafeLen) -> Self {
         #[cfg(debug_assertions)]
         {
-            let max_len = Self::prim_safe_len(Self::MIN, a);
+            let max_len = <Self as TotalFloatImpl>::prim_safe_len(<Self as TotalFloatImpl>::MIN, a);
             assert!(
                 Self::SafeLen::zero() < b && b <= max_len,
                 "b must be in range 1..=max_len (b = {b}, max_len = {max_len})"
@@ -220,10 +241,70 @@ impl private::Sealed for f16 {}
 #[cfg(feature = "total_float_nightly_experimental")]
 impl private::Sealed for f128 {}
 
-impl TotalFloat for f64 {
+macro_rules! impl_total_capability {
+    ($primitive:ty, $safe_len:ty) => {
+        impl TotalFloat for $primitive {
+            type SafeLen = $safe_len;
+
+            const MIN: Self = <Self as TotalFloatImpl>::MIN;
+            const MAX: Self = <Self as TotalFloatImpl>::MAX;
+            const MAX_SIZE: Self::SafeLen = <Self as TotalFloatImpl>::MAX_SIZE;
+
+            fn hash<H: Hasher>(x: Self, state: &mut H) {
+                <Self as TotalFloatImpl>::to_bits(x).hash(state);
+            }
+
+            fn total_cmp(x: Self, y: Self) -> Ordering {
+                <Self as TotalFloatImpl>::total_cmp(x, y)
+            }
+
+            fn next_up(x: Self) -> Self {
+                <Self as TotalFloatImpl>::from_ordered(
+                    <Self as TotalFloatImpl>::to_ordered(x)
+                        .wrapping_add(<<Self as TotalFloatImpl>::Ordered as One>::one()),
+                )
+            }
+
+            fn next_down(x: Self) -> Self {
+                <Self as TotalFloatImpl>::from_ordered(
+                    <Self as TotalFloatImpl>::to_ordered(x)
+                        .wrapping_sub(<<Self as TotalFloatImpl>::Ordered as One>::one()),
+                )
+            }
+
+            fn prim_safe_len(start: Self, end: Self) -> Self::SafeLen {
+                <Self as TotalFloatImpl>::prim_safe_len(start, end)
+            }
+
+            fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64 {
+                <Self as TotalFloatImpl>::safe_len_to_f64_lossy(len)
+            }
+
+            fn f64_to_safe_len_lossy(f: f64) -> Self::SafeLen {
+                <Self as TotalFloatImpl>::f64_to_safe_len_lossy(f)
+            }
+
+            fn inclusive_end_from_start(a: Self, b: Self::SafeLen) -> Self {
+                <Self as TotalFloatImpl>::inclusive_end_from_start(a, b)
+            }
+
+            fn start_from_inclusive_end(a: Self, b: Self::SafeLen) -> Self {
+                <Self as TotalFloatImpl>::start_from_inclusive_end(a, b)
+            }
+        }
+    };
+}
+
+impl_total_capability!(f64, i128);
+impl_total_capability!(f32, i64);
+#[cfg(feature = "total_float_nightly_experimental")]
+impl_total_capability!(f16, i32);
+#[cfg(feature = "total_float_nightly_experimental")]
+impl_total_capability!(f128, UIntPlusOne<u128>);
+
+impl TotalFloatImpl for f64 {
     type Bits = u64;
     type Ordered = i64;
-    type SafeLen = i128;
 
     const MIN: Self = Self::from_bits(u64::MAX);
     const MAX: Self = Self::from_bits(0x7fff_ffff_ffff_ffff);
@@ -238,10 +319,9 @@ impl TotalFloat for f64 {
     }
 }
 
-impl TotalFloat for f32 {
+impl TotalFloatImpl for f32 {
     type Bits = u32;
     type Ordered = i32;
-    type SafeLen = i64;
 
     const MIN: Self = Self::from_bits(u32::MAX);
     const MAX: Self = Self::from_bits(0x7fff_ffff);
@@ -257,10 +337,9 @@ impl TotalFloat for f32 {
 }
 
 #[cfg(feature = "total_float_nightly_experimental")]
-impl TotalFloat for f16 {
+impl TotalFloatImpl for f16 {
     type Bits = u16;
     type Ordered = i16;
-    type SafeLen = i32;
 
     const MIN: Self = Self::from_bits(u16::MAX);
     const MAX: Self = Self::from_bits(0x7fff);
@@ -275,10 +354,9 @@ impl TotalFloat for f16 {
 }
 
 #[cfg(feature = "total_float_nightly_experimental")]
-impl TotalFloat for f128 {
+impl TotalFloatImpl for f128 {
     type Bits = u128;
     type Ordered = i128;
-    type SafeLen = UIntPlusOne<u128>;
 
     const MIN: Self = Self::from_bits(u128::MAX);
     const MAX: Self = Self::from_bits(0x7fff_ffff_ffff_ffff_ffff_ffff_ffff_ffff);

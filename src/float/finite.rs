@@ -554,7 +554,7 @@ impl<T: FiniteFloat> FiniteRangeExt<T> for RangeInclusive<Finite<T>> {
 
 impl<T: FiniteFloat> PartialEq for Finite<T> {
     fn eq(&self, other: &Self) -> bool {
-        T::to_bits(self.0) == T::to_bits(other.0)
+        T::total_cmp(self.0, other.0) == Ordering::Equal
     }
 }
 
@@ -574,7 +574,7 @@ impl<T: FiniteFloat> Ord for Finite<T> {
 
 impl<T: FiniteFloat> Hash for Finite<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        T::to_bits(self.0).hash(state);
+        T::hash(self.0, state);
     }
 }
 

@@ -1,12 +1,12 @@
 //! Internal type to abstract a floating point value,
 //! providing the necessary functionality for the `Finite` types to `impl Integer`.
 //!
-//! Not intended for customer use, but must be public for Rust reasons. Use `Finite` instead.
+//! The public capability trait is doc-hidden and sealed; use `Finite` instead.
 
 use core::{
     cmp::Ordering,
     fmt::{Debug, Display},
-    hash::Hash,
+    hash::{Hash, Hasher},
     ops::{AddAssign, SubAssign},
 };
 
@@ -20,13 +20,52 @@ mod private {
     pub trait Sealed {}
 }
 
-/// Internal implementation trait for the supported primitive finite float types.
+/// Public capability required by the generic [`Finite`](super::finite::Finite) APIs.
 ///
-/// This trait is sealed because its `SafeLen` and conversion methods have semantic invariants
-/// that cannot be expressed by Rust's trait bounds. Use [`Finite`](super::finite::Finite) rather
-/// than implementing this trait directly.
+/// This trait is sealed because it is an implementation detail of the supported primitive
+/// floating-point wrappers. Use [`Finite`](super::finite::Finite) rather than implementing it.
+#[doc(hidden)]
 pub trait FiniteFloat:
     private::Sealed + Default + Copy + Clone + Debug + Send + Sync + 'static
+{
+    /// The minimum finite value.
+    const MIN: Self;
+    /// The maximum finite value.
+    const MAX: Self;
+    /// The maximum number of values in a finite range.
+    const MAX_SIZE: Self::SafeLen;
+
+    /// Integral type for holding the size of any finite floating-point range.
+    type SafeLen: Send
+        + Sync
+        + Debug
+        + Display
+        + Hash
+        + Copy
+        + PartialEq
+        + PartialOrd
+        + num_traits::Zero
+        + num_traits::One
+        + AddAssign
+        + SubAssign;
+
+    fn hash<H: Hasher>(x: Self, state: &mut H);
+    fn total_cmp(x: Self, y: Self) -> Ordering;
+    fn is_finite(x: Self) -> bool;
+    fn normalize(x: Self) -> Self;
+    fn next_up(x: Self) -> Self;
+    fn next_down(x: Self) -> Self;
+    fn is_neg_zero(x: Self) -> bool;
+    fn prim_safe_len(start: Self, end: Self) -> Self::SafeLen;
+    fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64;
+    fn f64_to_safe_len_lossy(f: f64) -> Self::SafeLen;
+    fn inclusive_end_from_start(a: Self, b: Self::SafeLen) -> Self;
+    fn start_from_inclusive_end(a: Self, b: Self::SafeLen) -> Self;
+}
+
+/// Entirely private encoding and arithmetic machinery for finite floats.
+pub(crate) trait FiniteFloatImpl:
+    FiniteFloat + Default + Copy + Clone + Debug + Send + Sync + 'static
 {
     /// The result of `to_bits()` on the wrapped type, e.g. u64
     type Bits: Copy + Eq + Hash + Send + Sync + Debug;
@@ -41,21 +80,6 @@ pub trait FiniteFloat:
         + Debug
         + Display
         + PartialOrd;
-    /// Integral type for holding size of any range. Typically this is the same as Bits.
-    type SafeLen: Send
-        + Sync
-        + Debug
-        + Display
-        // Needed for Integer::SafeLen
-        + Hash
-        + Copy
-        + PartialEq
-        + PartialOrd
-        + num_traits::Zero
-        + num_traits::One
-        + AddAssign
-        + SubAssign;
-
     /// The minimum value available, in the usual floating point sense
     const MIN: Self;
     /// The maximum value available, in the usual floating point sense
@@ -107,7 +131,8 @@ pub trait FiniteFloat:
     fn inclusive_end_from_start(a: Self, b: Self::SafeLen) -> Self {
         #[cfg(debug_assertions)]
         {
-            let max_len = Self::prim_safe_len(a, Self::MAX);
+            let max_len =
+                <Self as FiniteFloatImpl>::prim_safe_len(a, <Self as FiniteFloatImpl>::MAX);
             assert!(
                 Self::SafeLen::zero() < b && b <= max_len,
                 "b must be in range 1..=max_len (b = {b}, max_len = {max_len})"
@@ -128,7 +153,8 @@ pub trait FiniteFloat:
     fn start_from_inclusive_end(a: Self, b: Self::SafeLen) -> Self {
         #[cfg(debug_assertions)]
         {
-            let max_len = Self::prim_safe_len(Self::MIN, a);
+            let max_len =
+                <Self as FiniteFloatImpl>::prim_safe_len(<Self as FiniteFloatImpl>::MIN, a);
             assert!(
                 Self::SafeLen::zero() < b && b <= max_len,
                 "b must be in range 1..=max_len (b = {b}, max_len = {max_len})"
@@ -253,10 +279,76 @@ impl private::Sealed for f16 {}
 #[cfg(feature = "total_float_nightly_experimental")]
 impl private::Sealed for f128 {}
 
-impl FiniteFloat for f64 {
+macro_rules! impl_finite_capability {
+    ($primitive:ty, $safe_len:ty) => {
+        impl FiniteFloat for $primitive {
+            type SafeLen = $safe_len;
+
+            const MIN: Self = <Self as FiniteFloatImpl>::MIN;
+            const MAX: Self = <Self as FiniteFloatImpl>::MAX;
+            const MAX_SIZE: Self::SafeLen = <Self as FiniteFloatImpl>::MAX_SIZE;
+
+            fn hash<H: Hasher>(x: Self, state: &mut H) {
+                <Self as FiniteFloatImpl>::to_bits(x).hash(state);
+            }
+
+            fn total_cmp(x: Self, y: Self) -> Ordering {
+                <Self as FiniteFloatImpl>::total_cmp(x, y)
+            }
+
+            fn is_finite(x: Self) -> bool {
+                <Self as FiniteFloatImpl>::is_finite(x)
+            }
+
+            fn normalize(x: Self) -> Self {
+                <Self as FiniteFloatImpl>::normalize(x)
+            }
+
+            fn next_up(x: Self) -> Self {
+                <Self as FiniteFloatImpl>::next_up(x)
+            }
+
+            fn next_down(x: Self) -> Self {
+                <Self as FiniteFloatImpl>::next_down(x)
+            }
+
+            fn is_neg_zero(x: Self) -> bool {
+                <Self as FiniteFloatImpl>::is_neg_zero(x)
+            }
+
+            fn prim_safe_len(start: Self, end: Self) -> Self::SafeLen {
+                <Self as FiniteFloatImpl>::prim_safe_len(start, end)
+            }
+
+            fn safe_len_to_f64_lossy(len: Self::SafeLen) -> f64 {
+                <Self as FiniteFloatImpl>::safe_len_to_f64_lossy(len)
+            }
+
+            fn f64_to_safe_len_lossy(f: f64) -> Self::SafeLen {
+                <Self as FiniteFloatImpl>::f64_to_safe_len_lossy(f)
+            }
+
+            fn inclusive_end_from_start(a: Self, b: Self::SafeLen) -> Self {
+                <Self as FiniteFloatImpl>::inclusive_end_from_start(a, b)
+            }
+
+            fn start_from_inclusive_end(a: Self, b: Self::SafeLen) -> Self {
+                <Self as FiniteFloatImpl>::start_from_inclusive_end(a, b)
+            }
+        }
+    };
+}
+
+impl_finite_capability!(f64, u64);
+impl_finite_capability!(f32, u32);
+#[cfg(feature = "total_float_nightly_experimental")]
+impl_finite_capability!(f16, u16);
+#[cfg(feature = "total_float_nightly_experimental")]
+impl_finite_capability!(f128, u128);
+
+impl FiniteFloatImpl for f64 {
     type Bits = u64;
     type Ordered = i64;
-    type SafeLen = u64;
 
     // Finite bit patterns, with the -0.0 slot collapsed into +0.0.
     const MAX_SIZE: Self::SafeLen = 0xFFE0_0000_0000_0000_u64 - 1;
@@ -268,10 +360,9 @@ impl FiniteFloat for f64 {
     impl_finite_ops!(to_ordered_64);
 }
 
-impl FiniteFloat for f32 {
+impl FiniteFloatImpl for f32 {
     type Bits = u32;
     type Ordered = i32;
-    type SafeLen = u32;
 
     // Finite bit patterns, with the -0.0 slot collapsed into +0.0.
     const MAX_SIZE: Self::SafeLen = 0xFF00_0000_u32 - 1;
@@ -284,10 +375,9 @@ impl FiniteFloat for f32 {
 }
 
 #[cfg(feature = "total_float_nightly_experimental")]
-impl FiniteFloat for f16 {
+impl FiniteFloatImpl for f16 {
     type Bits = u16;
     type Ordered = i16;
-    type SafeLen = u16;
 
     // Finite bit patterns, with the -0.0 slot collapsed into +0.0.
     const MAX_SIZE: Self::SafeLen = 0xF800u16 - 1;
@@ -300,10 +390,9 @@ impl FiniteFloat for f16 {
 }
 
 #[cfg(feature = "total_float_nightly_experimental")]
-impl FiniteFloat for f128 {
+impl FiniteFloatImpl for f128 {
     type Bits = u128;
     type Ordered = i128;
-    type SafeLen = u128;
 
     // Finite bit patterns, with the -0.0 slot collapsed into +0.0.
     const MAX_SIZE: Self::SafeLen = 0xFFFE_0000_0000_0000_0000_0000_0000_0000_u128 - 1;

@@ -21,6 +21,10 @@
 //! assert!(!set.contains(TotalF32::new(6.0)));
 //!```
 
+use super::total_float::TotalFloat;
+use crate::Integer;
+#[cfg(feature = "from_slice")]
+use crate::RangeSetBlaze;
 use core::{
     cmp::Ordering,
     fmt::Debug,
@@ -28,15 +32,6 @@ use core::{
     mem,
     ops::RangeInclusive,
 };
-use num_traits::One;
-use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
-
-use crate::Integer;
-#[cfg(feature = "from_slice")]
-use crate::RangeSetBlaze;
-
-use super::total_float::TotalFloat;
-
 /// Total ordered f64, all values valid, including NaN, -0.0, +0.0, and infinities.
 pub type TotalF64 = Total<f64>;
 /// Total ordered f32, all values valid, including NaN, -0.0, +0.0, and infinities.
@@ -197,8 +192,7 @@ impl<T: TotalFloat> Total<T> {
     #[must_use]
     pub fn after(self) -> Self {
         debug_assert!(self != Self::MAX, "after() called on maximum value");
-        let ordered = T::to_ordered(self.0);
-        Self(T::from_ordered(ordered.wrapping_add(&T::Ordered::one())))
+        Self(T::next_up(self.0))
     }
 
     /// Returns the previous float in total order.
@@ -217,8 +211,7 @@ impl<T: TotalFloat> Total<T> {
     #[must_use]
     pub fn before(self) -> Self {
         debug_assert!(self != Self::MIN, "before() called on minimum value");
-        let ordered = T::to_ordered(self.0);
-        Self(T::from_ordered(ordered.wrapping_sub(&T::Ordered::one())))
+        Self(T::next_down(self.0))
     }
 
     /// Returns the next float.
@@ -415,7 +408,7 @@ impl<T: TotalFloat> TotalRangeExt<T> for RangeInclusive<Total<T>> {
 
 impl<T: TotalFloat> PartialEq for Total<T> {
     fn eq(&self, other: &Self) -> bool {
-        T::to_bits(self.0) == T::to_bits(other.0)
+        T::total_cmp(self.0, other.0) == Ordering::Equal
     }
 }
 
@@ -435,7 +428,7 @@ impl<T: TotalFloat> Ord for Total<T> {
 
 impl<T: TotalFloat> Hash for Total<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        T::to_bits(self.0).hash(state);
+        T::hash(self.0, state);
     }
 }
 
