@@ -57,7 +57,8 @@ pub const fn ff128(x: f128) -> FiniteF128 {
 }
 
 // TODO When const trait methods are stable, make the generic Finite constructors and other
-// eligible methods const, then have these shorthands call Finite::new directly.
+// eligible methods const, then have these shorthands call Finite::new directly. That will also
+// let their negative-zero normalization share `FiniteFloat::normalize` with runtime paths.
 macro_rules! finite_const_constructor {
     ($name:ident, $primitive:ty, $finite:ty, $bits:ty, $exponent_mask:expr) => {
         const fn $name(x: $primitive) -> $finite {
@@ -324,12 +325,7 @@ impl<T: FiniteFloat> Finite<T> {
     #[must_use]
     pub fn after(self) -> Self {
         debug_assert!(self != Self::MAX, "after() called on maximum value");
-        let up = T::next_up(self.0);
-        if T::is_neg_zero(up) {
-            Self(T::normalize(up))
-        } else {
-            Self(up)
-        }
+        Self(T::normalize(T::next_up(self.0)))
     }
 
     /// Returns the previous float, in total order.
@@ -349,12 +345,7 @@ impl<T: FiniteFloat> Finite<T> {
     #[must_use]
     pub fn before(self) -> Self {
         debug_assert!(self != Self::MIN, "before() called on minimum value");
-        let down = T::next_down(self.0);
-        if T::is_neg_zero(down) {
-            Self(T::normalize(down))
-        } else {
-            Self(down)
-        }
+        Self(T::normalize(T::next_down(self.0)))
     }
 
     /// Returns the next float, in total order.

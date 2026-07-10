@@ -102,7 +102,7 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         // If b is in range, two’s-complement wrap-around yields the correct inclusive end even if the add overflows
         let start = Self::to_ordered(a);
         let mut end = start.wrapping_add(&Self::safe_as_ordered(b));
-        if (start..=end).contains(&Self::NEG_ZERO_ORDERED) {
+        if Self::crosses_neg_zero(start, end) {
             end = end.wrapping_add(&Self::Ordered::one());
         }
         Self::from_ordered(end)
@@ -120,7 +120,7 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         // If b is in range, two’s-complement wrap-around yields the correct start even if the sub overflows
         let end = Self::to_ordered(a);
         let mut start = end.wrapping_sub(&Self::safe_as_ordered(b));
-        if (start..=end).contains(&Self::NEG_ZERO_ORDERED) {
+        if Self::crosses_neg_zero(start, end) {
             start = start.wrapping_sub(&Self::Ordered::one());
         }
         Self::from_ordered(start)
@@ -139,6 +139,12 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
     fn next_down(x: Self::Primitive) -> Self::Primitive;
     /// Returns true if `x`'s bit pattern is that of negative zero.
     fn is_neg_zero(x: Self::Primitive) -> bool;
+
+    /// Returns whether an ordered inclusive interval contains the excluded `-0.0` slot.
+    #[must_use]
+    fn crosses_neg_zero(start: Self::Ordered, end: Self::Ordered) -> bool {
+        (start..=end).contains(&Self::NEG_ZERO_ORDERED)
+    }
 }
 
 macro_rules! impl_finite_ops {
@@ -164,7 +170,7 @@ macro_rules! impl_finite_ops {
             debug_assert!(start >= Self::MIN_ORDERED, "start >= MIN required");
             debug_assert!(end <= Self::MAX_ORDERED, "end <= MAX required");
 
-            if (start..=end).contains(&Self::NEG_ZERO_ORDERED) {
+            if Self::crosses_neg_zero(start, end) {
                 end.wrapping_sub(start) as Self::SafeLen
             } else {
                 end.wrapping_sub(start).wrapping_add(1) as Self::SafeLen
