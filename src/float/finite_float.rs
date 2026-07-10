@@ -14,14 +14,12 @@ use core::{
 use super::total_float::{from_ordered_16, from_ordered_128, to_ordered_16, to_ordered_128};
 use super::total_float::{from_ordered_32, from_ordered_64, to_ordered_32, to_ordered_64};
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
-use num_traits::{Num, One, Zero};
+use num_traits::{One, Zero};
 
 /// Minimum scaffolding necessary to implement Total and Finite for a floating point type.
 pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
-    /// The wrapped type, e.g. f64
-    type Primitive: FiniteFloat;
     /// The result of `to_bits()` on the wrapped type, e.g. u64
-    type Bits: Num + Copy + Hash + Send + Sync + Debug;
+    type Bits: Copy + Eq + Hash + Send + Sync + Debug;
     /// The intermediate type used for `total_cmp` comparison, e.g. i64
     type Ordered: WrappingAdd
         + WrappingSub
@@ -49,9 +47,9 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         + SubAssign;
 
     /// The minimum value available, in the usual floating point sense
-    const MIN: Self::Primitive;
+    const MIN: Self;
     /// The maximum value available, in the usual floating point sense
-    const MAX: Self::Primitive;
+    const MAX: Self;
 
     /// `MIN` converted to the Ordered type
     const MIN_ORDERED: Self::Ordered;
@@ -67,12 +65,12 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
     /// The ordered value of negative zero
     const NEG_ZERO_ORDERED: Self::Ordered;
 
-    /// Transform Primitive into Ordered, to allow comparison and addition
-    fn to_ordered(x: Self::Primitive) -> Self::Ordered;
-    /// Transform Ordered back to Primitive
-    fn from_ordered(x: Self::Ordered) -> Self::Primitive;
-    /// Transform Primitive into a type with more concrete semantics, e.g. `f64::to_bits()`
-    fn to_bits(x: Self::Primitive) -> Self::Bits;
+    /// Transform a float value into Ordered, to allow comparison and addition
+    fn to_ordered(x: Self) -> Self::Ordered;
+    /// Transform Ordered back to a float value
+    fn from_ordered(x: Self::Ordered) -> Self;
+    /// Transform a float value into a type with more concrete semantics, e.g. `f64::to_bits()`
+    fn to_bits(x: Self) -> Self::Bits;
     /// Return the size of the inclusive range from start to end
     fn safe_len(start: Self::Ordered, end: Self::Ordered) -> Self::SafeLen;
     /// Converts [`FiniteFloat::SafeLen`] to `f64`, potentially losing precision for large values.
@@ -87,10 +85,10 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
     /// silently wraps to a nonsense (but not unsafe) result.
     fn safe_as_ordered(x: Self::SafeLen) -> Self::Ordered;
     /// Returns the ordering between `x` and `y`, as per the standard library's `f64::total_cmp`.
-    fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering;
+    fn total_cmp(x: Self, y: Self) -> Ordering;
 
     /// Computes `self + (b - 1)` where `b` is of type [`FiniteFloat::SafeLen`].
-    fn inclusive_end_from_start(a: Self::Primitive, b: Self::SafeLen) -> Self::Primitive {
+    fn inclusive_end_from_start(a: Self, b: Self::SafeLen) -> Self {
         #[cfg(debug_assertions)]
         {
             let max_len = Self::prim_safe_len(a, Self::MAX);
@@ -108,7 +106,7 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         Self::from_ordered(end)
     }
     /// Computes `self - (b - 1)` where `b` is of type [`FiniteFloat::SafeLen`].
-    fn start_from_inclusive_end(a: Self::Primitive, b: Self::SafeLen) -> Self::Primitive {
+    fn start_from_inclusive_end(a: Self, b: Self::SafeLen) -> Self {
         #[cfg(debug_assertions)]
         {
             let max_len = Self::prim_safe_len(Self::MIN, a);
@@ -126,19 +124,19 @@ pub trait FiniteFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         Self::from_ordered(start)
     }
     /// Return the size of the inclusive range from start to end.
-    fn prim_safe_len(start: Self::Primitive, end: Self::Primitive) -> Self::SafeLen {
+    fn prim_safe_len(start: Self, end: Self) -> Self::SafeLen {
         Self::safe_len(Self::to_ordered(start), Self::to_ordered(end))
     }
     /// Return true if the float is finite.
-    fn is_finite(x: Self::Primitive) -> bool;
+    fn is_finite(x: Self) -> bool;
     /// Turn negative zero into positive zero, leave other numbers unchanged.
-    fn normalize(x: Self::Primitive) -> Self::Primitive;
+    fn normalize(x: Self) -> Self;
     /// Returns the least float strictly greater than `x` (`x.next_up()`).
-    fn next_up(x: Self::Primitive) -> Self::Primitive;
+    fn next_up(x: Self) -> Self;
     /// Returns the greatest float strictly less than `x` (`x.next_down()`).
-    fn next_down(x: Self::Primitive) -> Self::Primitive;
+    fn next_down(x: Self) -> Self;
     /// Returns true if `x`'s bit pattern is that of negative zero.
-    fn is_neg_zero(x: Self::Primitive) -> bool;
+    fn is_neg_zero(x: Self) -> bool;
 
     /// Returns whether an ordered inclusive interval contains the excluded `-0.0` slot.
     #[must_use]
@@ -156,11 +154,11 @@ macro_rules! impl_finite_ops {
         const NEG_ZERO_BITS: Self::Bits = Self::to_bits(-0.0);
         const NEG_ZERO_ORDERED: Self::Ordered = $to_ordered(-0.0);
 
-        fn to_ordered(x: Self::Primitive) -> Self::Ordered {
+        fn to_ordered(x: Self) -> Self::Ordered {
             $to_ordered(x)
         }
 
-        fn to_bits(x: Self::Primitive) -> Self::Bits {
+        fn to_bits(x: Self) -> Self::Bits {
             x.to_bits()
         }
         #[expect(clippy::cast_sign_loss)]
@@ -196,15 +194,15 @@ macro_rules! impl_finite_ops {
             (x - 1) as Self::Ordered
         }
 
-        fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering {
+        fn total_cmp(x: Self, y: Self) -> Ordering {
             x.total_cmp(&y)
         }
 
-        fn is_finite(x: Self::Primitive) -> bool {
+        fn is_finite(x: Self) -> bool {
             x.is_finite()
         }
 
-        fn normalize(x: Self::Primitive) -> Self::Primitive {
+        fn normalize(x: Self) -> Self {
             if x.to_bits() == Self::NEG_ZERO_BITS {
                 0.0
             } else {
@@ -212,29 +210,28 @@ macro_rules! impl_finite_ops {
             }
         }
 
-        fn next_up(x: Self::Primitive) -> Self::Primitive {
+        fn next_up(x: Self) -> Self {
             x.next_up()
         }
 
-        fn next_down(x: Self::Primitive) -> Self::Primitive {
+        fn next_down(x: Self) -> Self {
             x.next_down()
         }
 
-        fn is_neg_zero(x: Self::Primitive) -> bool {
+        fn is_neg_zero(x: Self) -> bool {
             x.to_bits() == Self::NEG_ZERO_BITS
         }
     };
 }
 
 impl FiniteFloat for f64 {
-    type Primitive = Self;
     type Bits = u64;
     type Ordered = i64;
     type SafeLen = u64;
 
     const MAX_SIZE: Self::SafeLen = 0xFFE0_0000_0000_0000_u64 - 1;
 
-    fn from_ordered(bits: Self::Ordered) -> Self::Primitive {
+    fn from_ordered(bits: Self::Ordered) -> Self {
         from_ordered_64(bits)
     }
 
@@ -242,7 +239,6 @@ impl FiniteFloat for f64 {
 }
 
 impl FiniteFloat for f32 {
-    type Primitive = Self;
     type Bits = u32;
     type Ordered = i32;
     type SafeLen = u32;
@@ -251,14 +247,13 @@ impl FiniteFloat for f32 {
 
     impl_finite_ops!(to_ordered_32);
 
-    fn from_ordered(bits: Self::Ordered) -> Self::Primitive {
+    fn from_ordered(bits: Self::Ordered) -> Self {
         from_ordered_32(bits)
     }
 }
 
 #[cfg(feature = "total_float_nightly_experimental")]
 impl FiniteFloat for f16 {
-    type Primitive = Self;
     type Bits = u16;
     type Ordered = i16;
     type SafeLen = u16;
@@ -267,14 +262,13 @@ impl FiniteFloat for f16 {
 
     impl_finite_ops!(to_ordered_16);
 
-    fn from_ordered(bits: Self::Ordered) -> Self::Primitive {
+    fn from_ordered(bits: Self::Ordered) -> Self {
         from_ordered_16(bits)
     }
 }
 
 #[cfg(feature = "total_float_nightly_experimental")]
 impl FiniteFloat for f128 {
-    type Primitive = Self;
     type Bits = u128;
     type Ordered = i128;
     type SafeLen = u128;
@@ -283,7 +277,7 @@ impl FiniteFloat for f128 {
 
     impl_finite_ops!(to_ordered_128);
 
-    fn from_ordered(bits: Self::Ordered) -> Self::Primitive {
+    fn from_ordered(bits: Self::Ordered) -> Self {
         from_ordered_128(bits)
     }
 }

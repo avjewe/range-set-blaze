@@ -93,7 +93,7 @@ pub const fn tf128(x: f128) -> TotalF128 {
 /// To also use the `Total16` and `Total128` types.
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
-pub struct Total<T: TotalFloat>(T::Primitive);
+pub struct Total<T: TotalFloat>(T);
 
 impl<T: TotalFloat> Total<T> {
     /// The minimum value that can be represented by the type.
@@ -140,7 +140,7 @@ impl<T: TotalFloat> Total<T> {
     /// let _ = TotalF64::new(f64::INFINITY);
     /// ```
     #[must_use]
-    pub const fn new(x: T::Primitive) -> Self {
+    pub const fn new(x: T) -> Self {
         Self(x)
     }
 
@@ -177,7 +177,7 @@ impl<T: TotalFloat> Total<T> {
     /// assert_eq!(TotalF64::new(42.0).into_inner(), 42.0);
     /// ```
     #[must_use]
-    pub const fn into_inner(self) -> T::Primitive {
+    pub const fn into_inner(self) -> T {
         self.0
     }
 
@@ -299,7 +299,7 @@ impl<T: TotalFloat> Total<T> {
     /// let long = RangeSetBlaze::from(TotalF64::new(3.0)..=TotalF64::new(5.0));
     /// assert_eq!(short, long);
     #[must_use]
-    pub fn from_primitive_range(range: RangeInclusive<T::Primitive>) -> RangeInclusive<Self> {
+    pub fn from_primitive_range(range: RangeInclusive<T>) -> RangeInclusive<Self> {
         let (start, end) = range.into_inner();
         Self(start)..=Self(end)
     }
@@ -317,7 +317,7 @@ impl<T: TotalFloat> Total<T> {
     /// assert_eq!(short, long);
     pub fn from_primitive_ranges<I>(ranges: I) -> impl Iterator<Item = RangeInclusive<Self>>
     where
-        I: IntoIterator<Item = RangeInclusive<T::Primitive>>,
+        I: IntoIterator<Item = RangeInclusive<T>>,
     {
         ranges.into_iter().map(Self::from_primitive_range)
     }
@@ -332,7 +332,7 @@ impl<T: TotalFloat> Total<T> {
     /// assert_eq!(short, long);
     pub fn values<I>(values: I) -> impl Iterator<Item = Self>
     where
-        I: IntoIterator<Item = T::Primitive>,
+        I: IntoIterator<Item = T>,
     {
         values.into_iter().map(Self)
     }
@@ -350,10 +350,10 @@ impl<T: TotalFloat> Total<T> {
     /// let long = RangeSetBlaze::from_iter([TotalF64::new(1.0), TotalF64::new(2.0), TotalF64::new(3.0), TotalF64::new(4.0)]);
     /// assert_eq!(short, long);
     #[must_use]
-    pub const fn from_primitive_slice(values: &[T::Primitive]) -> &[Self] {
-        // SAFETY: Total is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
+    pub const fn from_primitive_slice(values: &[T]) -> &[Self] {
+        // SAFETY: Total is #[repr(transparent)] over T, making `&[T]`
         // and `&[Total]` entirely interchangeable in layout and lifetimes.
-        unsafe { mem::transmute::<&[T::Primitive], &[Self]>(values) }
+        unsafe { mem::transmute::<&[T], &[Self]>(values) }
     }
 }
 
@@ -372,14 +372,14 @@ pub trait TotalSliceExt<T: TotalFloat> {
     /// let totals = [TotalF64::new(1.0), TotalF64::new(2.0), TotalF64::new(3.0)];
     /// assert_eq!(&[1.0, 2.0, 3.0], totals.as_primitive_slice());
     /// ```
-    fn as_primitive_slice(&self) -> &[T::Primitive];
+    fn as_primitive_slice(&self) -> &[T];
 }
 
 impl<T: TotalFloat> TotalSliceExt<T> for [Total<T>] {
-    fn as_primitive_slice(&self) -> &[T::Primitive] {
-        // SAFETY: TotalFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
+    fn as_primitive_slice(&self) -> &[T] {
+        // SAFETY: TotalFloat is #[repr(transparent)] over T, making `&[T]`
         // and `&[TotalFloat]` entirely interchangeable in layout and lifetimes.
-        unsafe { mem::transmute::<&[Total<T>], &[T::Primitive]>(self) }
+        unsafe { mem::transmute::<&[Total<T>], &[T]>(self) }
     }
 }
 
@@ -401,7 +401,7 @@ pub trait TotalRangeExt<T: TotalFloat> {
     /// assert_eq!(range.into_primitive_range(), 3.0..=5.0);
     /// ```
     #[must_use]
-    fn into_primitive_range(self) -> RangeInclusive<T::Primitive>;
+    fn into_primitive_range(self) -> RangeInclusive<T>;
 
     /// Converts an inclusive [`Total`] range into a `(start, end)` tuple of primitive values.
     ///
@@ -420,16 +420,16 @@ pub trait TotalRangeExt<T: TotalFloat> {
     /// assert_eq!(range.into_primitive_inner(), (3.0, 5.0));
     /// ```
     #[must_use]
-    fn into_primitive_inner(self) -> (T::Primitive, T::Primitive);
+    fn into_primitive_inner(self) -> (T, T);
 }
 
 impl<T: TotalFloat> TotalRangeExt<T> for RangeInclusive<Total<T>> {
-    fn into_primitive_range(self) -> RangeInclusive<T::Primitive> {
+    fn into_primitive_range(self) -> RangeInclusive<T> {
         let (start, end) = self.into_primitive_inner();
         start..=end
     }
 
-    fn into_primitive_inner(self) -> (T::Primitive, T::Primitive) {
+    fn into_primitive_inner(self) -> (T, T) {
         let (start, end) = self.into_inner();
         (start.into_inner(), end.into_inner())
     }

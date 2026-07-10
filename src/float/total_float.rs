@@ -10,17 +10,15 @@ use core::{
     ops::{AddAssign, SubAssign},
 };
 use num_traits::ops::wrapping::{WrappingAdd, WrappingSub};
-use num_traits::{Num, One, Zero};
+use num_traits::{One, Zero};
 
 #[cfg(feature = "total_float_nightly_experimental")]
 use crate::UIntPlusOne;
 
 /// Minimum scaffolding necessary to implement Total and Finite for a floating point type.
 pub trait TotalFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
-    /// The wrapped type, e.g. f64
-    type Primitive: TotalFloat;
     /// The result of `to_bits()` on the wrapped type, e.g. u64
-    type Bits: Num + Copy + Hash + Send + Sync + Debug;
+    type Bits: Copy + Eq + Hash + Send + Sync + Debug;
     /// The intermediate type used for comparison, e.g. i64
     type Ordered: WrappingAdd + WrappingSub + One + PartialEq + Copy + Send + Sync + Debug + Display;
     /// Integral type for holding size of any range. Must hold at least one more value than `Bits`.
@@ -39,19 +37,19 @@ pub trait TotalFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         + SubAssign;
 
     /// The minimum value available, in the `total_cmp`  sense
-    const MIN: Self::Primitive;
+    const MIN: Self;
     /// The maximum value available, in the `total_cmp`  sense
-    const MAX: Self::Primitive;
+    const MAX: Self;
 
     /// The maximum possible size of a range, i.e. the maximum value possible from `safe_len()`
     const MAX_SIZE: Self::SafeLen;
 
-    /// Transform Primitive into Ordered, to allow comparison and addition
-    fn to_ordered(x: Self::Primitive) -> Self::Ordered;
-    /// Transform Ordered back to Primitive, presumably after some addition
-    fn from_ordered(x: Self::Ordered) -> Self::Primitive;
-    /// Transform Primitive into a type with more concrete semantics, e.g. `f64::to_bits()`
-    fn to_bits(x: Self::Primitive) -> Self::Bits;
+    /// Transform a float value into Ordered, to allow comparison and addition
+    fn to_ordered(x: Self) -> Self::Ordered;
+    /// Transform Ordered back to a float value, presumably after some addition
+    fn from_ordered(x: Self::Ordered) -> Self;
+    /// Transform a float value into a type with more concrete semantics, e.g. `f64::to_bits()`
+    fn to_bits(x: Self) -> Self::Bits;
     /// Return the size of the inclusive range from start to end
     fn safe_len(start: Self::Ordered, end: Self::Ordered) -> Self::SafeLen;
     /// Converts [`TotalFloat::SafeLen`] to `f64`, potentially losing precision for large values.
@@ -66,10 +64,10 @@ pub trait TotalFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
     /// silently wraps to a nonsense (but not unsafe) result.
     fn safe_as_ordered(x: Self::SafeLen) -> Self::Ordered;
     /// Returns the ordering between `x` and `y`, as per the standard library's `f64::total_cmp`.
-    fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering;
+    fn total_cmp(x: Self, y: Self) -> Ordering;
 
     /// Computes `self + (b - 1)` where `b` is of type [`TotalFloat::SafeLen`].
-    fn inclusive_end_from_start(a: Self::Primitive, b: Self::SafeLen) -> Self::Primitive {
+    fn inclusive_end_from_start(a: Self, b: Self::SafeLen) -> Self {
         #[cfg(debug_assertions)]
         {
             let max_len = Self::prim_safe_len(a, Self::MAX);
@@ -82,7 +80,7 @@ pub trait TotalFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         Self::from_ordered(Self::to_ordered(a).wrapping_add(&Self::safe_as_ordered(b)))
     }
     /// Computes `self - (b - 1)` where `b` is of type [`TotalFloat::SafeLen`].
-    fn start_from_inclusive_end(a: Self::Primitive, b: Self::SafeLen) -> Self::Primitive {
+    fn start_from_inclusive_end(a: Self, b: Self::SafeLen) -> Self {
         #[cfg(debug_assertions)]
         {
             let max_len = Self::prim_safe_len(Self::MIN, a);
@@ -95,7 +93,7 @@ pub trait TotalFloat: Default + Copy + Clone + Debug + Send + Sync + 'static {
         Self::from_ordered(Self::to_ordered(a).wrapping_sub(&Self::safe_as_ordered(b)))
     }
     /// Return the size of the inclusive range from start to end.
-    fn prim_safe_len(start: Self::Primitive, end: Self::Primitive) -> Self::SafeLen {
+    fn prim_safe_len(start: Self, end: Self) -> Self::SafeLen {
         Self::safe_len(Self::to_ordered(start), Self::to_ordered(end))
     }
 }
@@ -151,15 +149,15 @@ pub(crate) const fn from_ordered_128(mut bits: i128) -> f128 {
 
 macro_rules! impl_total_ops {
     ($to_ordered:ident) => {
-        fn to_bits(x: Self::Primitive) -> Self::Bits {
+        fn to_bits(x: Self) -> Self::Bits {
             x.to_bits()
         }
 
-        fn to_ordered(x: Self::Primitive) -> Self::Ordered {
+        fn to_ordered(x: Self) -> Self::Ordered {
             $to_ordered(x)
         }
 
-        fn total_cmp(x: Self::Primitive, y: Self::Primitive) -> Ordering {
+        fn total_cmp(x: Self, y: Self) -> Ordering {
             x.total_cmp(&y)
         }
     };
@@ -197,7 +195,6 @@ macro_rules! impl_total_ops_safelen {
 }
 
 impl TotalFloat for f64 {
-    type Primitive = Self;
     type Bits = u64;
     type Ordered = i64;
     type SafeLen = i128;
@@ -209,13 +206,12 @@ impl TotalFloat for f64 {
     impl_total_ops!(to_ordered_64);
     impl_total_ops_safelen!();
 
-    fn from_ordered(bits: Self::Ordered) -> Self::Primitive {
+    fn from_ordered(bits: Self::Ordered) -> Self {
         from_ordered_64(bits)
     }
 }
 
 impl TotalFloat for f32 {
-    type Primitive = Self;
     type Bits = u32;
     type Ordered = i32;
     type SafeLen = i64;
@@ -227,14 +223,13 @@ impl TotalFloat for f32 {
     impl_total_ops!(to_ordered_32);
     impl_total_ops_safelen!();
 
-    fn from_ordered(bits: Self::Ordered) -> Self::Primitive {
+    fn from_ordered(bits: Self::Ordered) -> Self {
         from_ordered_32(bits)
     }
 }
 
 #[cfg(feature = "total_float_nightly_experimental")]
 impl TotalFloat for f16 {
-    type Primitive = Self;
     type Bits = u16;
     type Ordered = i16;
     type SafeLen = i32;
@@ -245,14 +240,13 @@ impl TotalFloat for f16 {
 
     impl_total_ops!(to_ordered_16);
     impl_total_ops_safelen!();
-    fn from_ordered(bits: Self::Ordered) -> Self::Primitive {
+    fn from_ordered(bits: Self::Ordered) -> Self {
         from_ordered_16(bits)
     }
 }
 
 #[cfg(feature = "total_float_nightly_experimental")]
 impl TotalFloat for f128 {
-    type Primitive = Self;
     type Bits = u128;
     type Ordered = i128;
     type SafeLen = UIntPlusOne<u128>;
@@ -263,7 +257,7 @@ impl TotalFloat for f128 {
 
     impl_total_ops!(to_ordered_128);
 
-    fn from_ordered(bits: Self::Ordered) -> Self::Primitive {
+    fn from_ordered(bits: Self::Ordered) -> Self {
         from_ordered_128(bits)
     }
 

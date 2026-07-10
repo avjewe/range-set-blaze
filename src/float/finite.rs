@@ -125,7 +125,7 @@ finite_const_constructor!(
 /// To also use the `Finite16` and `Finite128` types.
 #[repr(transparent)]
 #[derive(Copy, Clone, Default, Debug)]
-pub struct Finite<T: FiniteFloat>(T::Primitive);
+pub struct Finite<T: FiniteFloat>(T);
 
 impl<T: FiniteFloat> Finite<T> {
     /// The minimum value that can be represented by the type.\
@@ -174,7 +174,7 @@ impl<T: FiniteFloat> Finite<T> {
     ///
     /// Panics if `x.is_finite()` returns false
     #[must_use]
-    pub fn new(x: T::Primitive) -> Self {
+    pub fn new(x: T) -> Self {
         Self::try_new(x).expect("Finite type requires a finite value")
     }
 
@@ -190,7 +190,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// assert_eq!(FiniteF64::try_new(f64::NAN), None);
     /// ```
     #[must_use]
-    pub fn try_new(x: T::Primitive) -> Option<Self> {
+    pub fn try_new(x: T) -> Option<Self> {
         // SAFETY: `T::is_finite` rules out NaN/infinity, and `T::normalize` canonicalizes -0.0.
         T::is_finite(x).then(|| unsafe { Self::new_unchecked(T::normalize(x)) })
     }
@@ -217,7 +217,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// option for this crate, and downstream code, to rely on the invariant in future
     /// (potentially unsafe) abstractions without an audit of every safe caller.
     #[must_use]
-    pub const unsafe fn new_unchecked(x: T::Primitive) -> Self {
+    pub const unsafe fn new_unchecked(x: T) -> Self {
         Self(x)
     }
 
@@ -254,7 +254,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// assert_eq!(FiniteF64::new(42.0).into_inner(), 42.0);
     /// ```
     #[must_use]
-    pub const fn into_inner(self) -> T::Primitive {
+    pub const fn into_inner(self) -> T {
         self.0
     }
 
@@ -409,7 +409,7 @@ impl<T: FiniteFloat> Finite<T> {
     ///
     /// Panics if `start` or `end` is not finite.
     #[must_use]
-    pub fn from_primitive_range(range: RangeInclusive<T::Primitive>) -> RangeInclusive<Self> {
+    pub fn from_primitive_range(range: RangeInclusive<T>) -> RangeInclusive<Self> {
         let (start, end) = range.into_inner();
         Self::new(start)..=Self::new(end)
     }
@@ -428,7 +428,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// assert_eq!(short, long);
     pub fn from_primitive_ranges<I>(ranges: I) -> impl Iterator<Item = RangeInclusive<Self>>
     where
-        I: IntoIterator<Item = RangeInclusive<T::Primitive>>,
+        I: IntoIterator<Item = RangeInclusive<T>>,
     {
         ranges.into_iter().map(Self::from_primitive_range)
     }
@@ -448,7 +448,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// Panics (when iterated) if any value is not finite.
     pub fn values<I>(values: I) -> impl Iterator<Item = Self>
     where
-        I: IntoIterator<Item = T::Primitive>,
+        I: IntoIterator<Item = T>,
     {
         values.into_iter().map(Self::new)
     }
@@ -474,7 +474,7 @@ impl<T: FiniteFloat> Finite<T> {
     /// without copying — see [`Finite::from_primitive_slice_unchecked`] if you need a true
     /// zero-copy view and can guarantee your data already satisfies [`Finite`]'s invariant).
     #[must_use]
-    pub fn from_primitive_slice(values: &[T::Primitive]) -> &[Self] {
+    pub fn from_primitive_slice(values: &[T]) -> &[Self] {
         assert!(
             values
                 .iter()
@@ -504,11 +504,11 @@ impl<T: FiniteFloat> Finite<T> {
     /// though violating it today would only produce incorrect results (see
     /// [`Finite::new_unchecked`] for the full rationale).
     #[must_use]
-    pub const unsafe fn from_primitive_slice_unchecked(values: &[T::Primitive]) -> &[Self] {
-        // SAFETY: Finite is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
+    pub const unsafe fn from_primitive_slice_unchecked(values: &[T]) -> &[Self] {
+        // SAFETY: Finite is #[repr(transparent)] over T, making `&[T]`
         // and `&[Finite]` entirely interchangeable in layout and lifetimes; the caller is
         // responsible for the value-level invariant per the safety doc above.
-        unsafe { mem::transmute::<&[T::Primitive], &[Self]>(values) }
+        unsafe { mem::transmute::<&[T], &[Self]>(values) }
     }
 }
 
@@ -528,14 +528,14 @@ pub trait FiniteSliceExt<T: FiniteFloat> {
     /// let finites = [FiniteF64::new(1.0), FiniteF64::new(2.0), FiniteF64::new(3.0)];
     /// assert_eq!(&[1.0, 2.0, 3.0], finites.as_primitive_slice());
     /// ```
-    fn as_primitive_slice(&self) -> &[T::Primitive];
+    fn as_primitive_slice(&self) -> &[T];
 }
 
 impl<T: FiniteFloat> FiniteSliceExt<T> for [Finite<T>] {
-    fn as_primitive_slice(&self) -> &[T::Primitive] {
-        // SAFETY: FiniteFloat is #[repr(transparent)] over T::Primitive, making `&[T::Primitive]`
+    fn as_primitive_slice(&self) -> &[T] {
+        // SAFETY: FiniteFloat is #[repr(transparent)] over T, making `&[T]`
         // and `&[FiniteFloat]` entirely interchangeable in layout and lifetimes.
-        unsafe { mem::transmute::<&[Finite<T>], &[T::Primitive]>(self) }
+        unsafe { mem::transmute::<&[Finite<T>], &[T]>(self) }
     }
 }
 
@@ -558,7 +558,7 @@ pub trait FiniteRangeExt<T: FiniteFloat> {
     /// assert_eq!(range.into_primitive_range(), 3.0..=5.0);
     /// ```
     #[must_use]
-    fn into_primitive_range(self) -> RangeInclusive<T::Primitive>;
+    fn into_primitive_range(self) -> RangeInclusive<T>;
 
     /// Converts an inclusive [`Finite`] range into a `(start, end)` tuple of primitive values.
     ///
@@ -578,16 +578,16 @@ pub trait FiniteRangeExt<T: FiniteFloat> {
     /// assert_eq!(range.into_primitive_inner(), (3.0, 5.0));
     /// ```
     #[must_use]
-    fn into_primitive_inner(self) -> (T::Primitive, T::Primitive);
+    fn into_primitive_inner(self) -> (T, T);
 }
 
 impl<T: FiniteFloat> FiniteRangeExt<T> for RangeInclusive<Finite<T>> {
-    fn into_primitive_range(self) -> RangeInclusive<T::Primitive> {
+    fn into_primitive_range(self) -> RangeInclusive<T> {
         let (start, end) = self.into_primitive_inner();
         start..=end
     }
 
-    fn into_primitive_inner(self) -> (T::Primitive, T::Primitive) {
+    fn into_primitive_inner(self) -> (T, T) {
         let (start, end) = self.into_inner();
         (start.into_inner(), end.into_inner())
     }

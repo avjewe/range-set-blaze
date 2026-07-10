@@ -9,6 +9,10 @@ public-API quality matter more here than in an experimental project.
 - This crate is published and versioned under semver. Treat any change to a `pub` signature,
   trait bound, or re-export as a breaking-change candidate; call it out explicitly rather than
   making it silently.
+- **July 2026 review note:** the experimental float features are being reviewed as their first
+  version. During this review, intentionally revise their public APIs and internal code
+  organization when that improves clarity or long-term design; this note may no longer be true
+  after this review period.
 - Do not remove or rename public items. If an item is genuinely obsolete, deprecate it with
   `#[deprecated(note = "...")]` and leave removal to a deliberate major-version bump the human
   approves.
