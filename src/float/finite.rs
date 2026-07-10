@@ -21,14 +21,14 @@ use crate::Integer;
 use crate::RangeSetBlaze;
 use num_traits::Zero;
 
-/// Total ordered f64, excluding NaN, -0.0, and infinities.
+/// Total ordered f64, with `-0.0` normalized to `+0.0`, and excluding NaN and infinities.
 pub type FiniteF64 = Finite<f64>;
-/// Total ordered f32, excluding NaN, -0.0, and infinities.
+/// Total ordered f32, with `-0.0` normalized to `+0.0`, and excluding NaN and infinities.
 pub type FiniteF32 = Finite<f32>;
-/// Total ordered f16, excluding NaN, -0.0, and infinities.
+/// Total ordered f16, with `-0.0` normalized to `+0.0`, and excluding NaN and infinities.
 #[cfg(feature = "total_float_nightly_experimental")]
 pub type FiniteF16 = Finite<f16>;
-/// Total ordered f128, excluding NaN, -0.0, and infinities.
+/// Total ordered f128, with `-0.0` normalized to `+0.0`, and excluding NaN and infinities.
 #[cfg(feature = "total_float_nightly_experimental")]
 pub type FiniteF128 = Finite<f128>;
 
@@ -93,7 +93,7 @@ finite_const_constructor!(
 
 /// Experimental: A transparent wrapper around [`f64`] and friends with total ordering.
 ///
-/// Comparison, equality, and hashing all agree with `total_cmp`.
+/// Comparison, equality, and hashing all agree with `total_cmp` after zero normalization.
 ///
 /// # Basic Usage
 /// ```
@@ -152,7 +152,8 @@ impl<T: FiniteFloat> Finite<T> {
     pub const MAX: Self = Self(T::MAX);
 
     /// The maximum possible size of a range, i.e. the size if `[MIN..=MAX]`
-    /// For Finite types, this is a strange number because there are excluded NaN values.
+    /// For `Finite` types, this is unusual because NaN and infinity values are excluded, and
+    /// `-0.0` and `+0.0` share one slot after normalization.
     ///
     /// # Examples
     /// ```

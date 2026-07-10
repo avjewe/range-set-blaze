@@ -63,7 +63,7 @@ pub trait FiniteFloat:
     fn start_from_inclusive_end(a: Self, b: Self::SafeLen) -> Self;
 }
 
-/// Entirely private encoding and arithmetic machinery for finite floats.
+/// Crate-private encoding and arithmetic machinery for finite floats.
 pub(crate) trait FiniteFloatImpl:
     FiniteFloat + Default + Copy + Clone + Debug + Send + Sync + 'static
 {

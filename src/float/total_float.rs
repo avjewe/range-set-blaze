@@ -59,7 +59,7 @@ pub trait TotalFloat:
     fn start_from_inclusive_end(a: Self, b: Self::SafeLen) -> Self;
 }
 
-/// Entirely private encoding and arithmetic machinery for total-order floats.
+/// Crate-private encoding and arithmetic machinery for total-order floats.
 pub(crate) trait TotalFloatImpl:
     TotalFloat + Default + Copy + Clone + Debug + Send + Sync + 'static
 {
