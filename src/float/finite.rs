@@ -170,7 +170,7 @@ impl<T: FiniteFloat> Finite<T> {
     ///
     /// [`Finite`] has a public type invariant ("only finite values, with zero canonicalized to
     /// `+0.0`, are legal"). Even though today's implementation would only produce incorrect
-    /// results (wrong `MAX_SIZE`, a duplicated zero slot, `next`/`prev` landing somewhere
+    /// results (wrong `MAX_SIZE`, a duplicated zero slot, `after`/`before` landing somewhere
     /// unexpected) rather than immediate undefined behavior if this precondition is violated,
     /// safe code must never be able to construct a value that breaks it. This preserves the
     /// option for this crate, and downstream code, to rely on the invariant in future
@@ -267,21 +267,21 @@ impl<T: FiniteFloat> Finite<T> {
         Some(unsafe { Self::new_unchecked(T::normalize(T::from_ordered(x))) })
     }
 
-    /// Returns the next float.
+    /// Returns the next float, in total order.
     ///
     /// # Examples
     /// ```
     /// use range_set_blaze::FiniteF64;
     ///
-    /// assert_eq!(FiniteF64::new(42.0).next().prev().into_inner(), 42.0);
+    /// assert_eq!(FiniteF64::new(42.0).after().before().into_inner(), 42.0);
     /// ```
     ///
     /// # Panics
     ///
     /// Panics on overflow if `self` is the maximum value.
     #[must_use]
-    pub fn next(self) -> Self {
-        debug_assert!(self != Self::MAX, "next() called on maximum value");
+    pub fn after(self) -> Self {
+        debug_assert!(self != Self::MAX, "after() called on maximum value");
         let up = T::next_up(self.0);
         if T::is_neg_zero(up) {
             Self(T::normalize(up))
@@ -290,21 +290,21 @@ impl<T: FiniteFloat> Finite<T> {
         }
     }
 
-    /// Returns the previous float.
+    /// Returns the previous float, in total order.
     ///
     /// # Examples
     /// ```
     /// use range_set_blaze::FiniteF64;
     ///
-    /// assert_eq!(FiniteF64::new(42.0).prev().next().into_inner(), 42.0);
+    /// assert_eq!(FiniteF64::new(42.0).before().after().into_inner(), 42.0);
     /// ```
     ///
     /// # Panics
     ///
     /// Panics on underflow if `self` is the minimum value.
     #[must_use]
-    pub fn prev(self) -> Self {
-        debug_assert!(self != Self::MIN, "prev() called on minimum value");
+    pub fn before(self) -> Self {
+        debug_assert!(self != Self::MIN, "before() called on minimum value");
         let down = T::next_down(self.0);
         if T::is_neg_zero(down) {
             Self(T::normalize(down))
@@ -313,7 +313,7 @@ impl<T: FiniteFloat> Finite<T> {
         }
     }
 
-    /// Returns the next float.
+    /// Returns the next float, in total order.
     ///
     /// Returns [`None`] if `self` is the maximum value.
     ///
@@ -322,20 +322,20 @@ impl<T: FiniteFloat> Finite<T> {
     /// use range_set_blaze::FiniteF64;
     ///
     /// let value = FiniteF64::new(42.0);
-    /// assert_eq!(value.checked_next(), Some(value.next()));
+    /// assert_eq!(value.checked_after(), Some(value.after()));
     /// let value = FiniteF64::MAX;
-    /// assert_eq!(value.checked_next(), None);
+    /// assert_eq!(value.checked_after(), None);
     /// ```
     #[must_use]
-    pub fn checked_next(self) -> Option<Self> {
+    pub fn checked_after(self) -> Option<Self> {
         if self == Self::MAX {
             None
         } else {
-            Some(self.next())
+            Some(self.after())
         }
     }
 
-    /// Returns the previous float.
+    /// Returns the previous float, in total order.
     ///
     /// Returns [`None`] if `self` is the minimum value.
     ///
@@ -344,16 +344,16 @@ impl<T: FiniteFloat> Finite<T> {
     /// use range_set_blaze::FiniteF64;
     ///
     /// let value = FiniteF64::new(42.0);
-    /// assert_eq!(value.checked_prev(), Some(value.prev()));
+    /// assert_eq!(value.checked_before(), Some(value.before()));
     /// let value = FiniteF64::MIN;
-    /// assert_eq!(value.checked_prev(), None);
+    /// assert_eq!(value.checked_before(), None);
     /// ```
     #[must_use]
-    pub fn checked_prev(self) -> Option<Self> {
+    pub fn checked_before(self) -> Option<Self> {
         if self == Self::MIN {
             None
         } else {
-            Some(self.prev())
+            Some(self.before())
         }
     }
 
@@ -510,24 +510,24 @@ impl<T: FiniteFloat> crate::Integer for Finite<T> {
 
     #[inline]
     fn checked_add_one(self) -> Option<Self> {
-        self.checked_next()
+        self.checked_after()
     }
 
     // This moves to the next representable float in total_cmp order, not a numeric + 1.0.
     #[inline]
     fn add_one(self) -> Self {
-        self.next()
+        self.after()
     }
 
     #[inline]
     // This moves to the previous representable float in total_cmp order, not a numeric - 1.0.
     fn sub_one(self) -> Self {
-        self.prev()
+        self.before()
     }
 
     #[inline]
     fn assign_sub_one(&mut self) {
-        *self = self.prev();
+        *self = self.before();
     }
 
     // Ideally, we would `impl std::iter::Step for FiniteF64` and just call Range::next(), but that's still experimental.
@@ -538,11 +538,11 @@ impl<T: FiniteFloat> crate::Integer for Finite<T> {
         } else if range.start() == range.end() && *range.start() == Self::MAX {
             // This is cheating, but I think it still fulfills the contract
             let next = *range.start();
-            *range = next..=range.end().prev();
+            *range = next..=range.end().before();
             Some(next)
         } else {
             let next = *range.start();
-            *range = (next.next())..=*range.end();
+            *range = (next.after())..=*range.end();
             Some(next)
         }
     }
@@ -554,11 +554,11 @@ impl<T: FiniteFloat> crate::Integer for Finite<T> {
         } else if range.start() == range.end() && *range.start() == Self::MIN {
             // This is cheating, but I think it still fulfills the contract
             let last = *range.end();
-            *range = last.next()..=last;
+            *range = last.after()..=last;
             Some(last)
         } else {
             let last = *range.end();
-            *range = *range.start()..=last.prev();
+            *range = *range.start()..=last.before();
             Some(last)
         }
     }
@@ -629,31 +629,31 @@ mod tests {
     }
 
     #[test]
-    fn next_and_prev_step_through_zero_in_total_order() {
+    fn after_and_before_step_through_zero_in_total_order() {
         assert_eq!(ff64(-0.0), ff64(0.0));
-        assert_ne!(ff64(0.0).prev(), ff64(-0.0));
-        assert_eq!(ff64(0.0).next(), ff64(f64::from_bits(1)));
+        assert_ne!(ff64(0.0).before(), ff64(-0.0));
+        assert_eq!(ff64(0.0).after(), ff64(f64::from_bits(1)));
         assert_eq!(
-            ff64(0.0).prev(),
+            ff64(0.0).before(),
             ff64(f64::from_bits(0x8000_0000_0000_0001))
         );
     }
 
     #[test]
-    fn next_and_prev_wrap() {
+    fn after_and_before_wrap() {
         // These should be true in release mode, but panic in debug as expected
-        // assert_eq!(FiniteF64::MAX.next(), FiniteF64::MIN);
-        // assert_eq!(FiniteF64::MIN.prev(), FiniteF64::MAX);
-        assert_eq!(FiniteF64::MAX.checked_next(), None);
-        assert_eq!(FiniteF64::MIN.checked_prev(), None);
+        // assert_eq!(FiniteF64::MAX.after(), FiniteF64::MIN);
+        // assert_eq!(FiniteF64::MIN.before(), FiniteF64::MAX);
+        assert_eq!(FiniteF64::MAX.checked_after(), None);
+        assert_eq!(FiniteF64::MIN.checked_before(), None);
     }
 
     #[test]
-    fn checked_next_and_prev_stop_at_total_order_boundaries() {
-        assert_eq!(FiniteF64::MIN.checked_prev(), None);
-        assert_eq!(FiniteF64::MAX.checked_next(), None);
-        assert_eq!(FiniteF64::MIN.checked_next(), Some(FiniteF64::MIN.next()));
-        assert_eq!(FiniteF64::MAX.checked_prev(), Some(FiniteF64::MAX.prev()));
+    fn checked_after_and_before_stop_at_total_order_boundaries() {
+        assert_eq!(FiniteF64::MIN.checked_before(), None);
+        assert_eq!(FiniteF64::MAX.checked_after(), None);
+        assert_eq!(FiniteF64::MIN.checked_after(), Some(FiniteF64::MIN.after()));
+        assert_eq!(FiniteF64::MAX.checked_before(), Some(FiniteF64::MAX.before()));
     }
 
     #[test]
@@ -674,7 +674,7 @@ mod tests {
     }
 
     #[test]
-    fn next_and_prev_are_neighbors_in_total_order() {
+    fn after_and_before_are_neighbors_in_total_order() {
         let values = [
             ff64(f64::MIN),
             ff64(-f64::MAX),
@@ -687,10 +687,10 @@ mod tests {
 
         for value in values {
             if value != ff64(f64::MAX) {
-                assert_eq!(value.next().prev(), value);
+                assert_eq!(value.after().before(), value);
             }
             if value != ff64(f64::MIN) {
-                assert_eq!(value.prev().next(), value);
+                assert_eq!(value.before().after(), value);
             }
         }
     }

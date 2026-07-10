@@ -122,7 +122,7 @@ fn chunks(scope: &RangeSetBlaze<FiniteF32>, n: usize) -> Vec<RangeSetBlaze<Finit
             let len = base_len + u32::from(i < remainder);
             let end = start.inclusive_end_from_start(len - 1);
             let chunk = RangeSetBlaze::from_iter([start..=end]);
-            start = end.next();
+            start = end.after();
             chunk
         })
         .collect()

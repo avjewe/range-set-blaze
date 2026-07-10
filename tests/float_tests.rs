@@ -246,15 +246,15 @@ fn float_test() {
     assert!(!foo.contains(tf64(6.99)));
     assert!(!foo.contains(tf64(9.01)));
 
-    assert!(!foo.contains(tf64(3.0).prev()));
-    assert!(!foo.contains(tf64(5.0).next()));
-    assert!(!foo.contains(tf64(7.0).prev()));
-    assert!(!foo.contains(tf64(9.0).next()));
+    assert!(!foo.contains(tf64(3.0).before()));
+    assert!(!foo.contains(tf64(5.0).after()));
+    assert!(!foo.contains(tf64(7.0).before()));
+    assert!(!foo.contains(tf64(9.0).after()));
 
-    assert!(foo.contains(tf64(3.0).next()));
-    assert!(foo.contains(tf64(5.0).prev()));
-    assert!(foo.contains(tf64(7.0).next()));
-    assert!(foo.contains(tf64(9.0).prev()));
+    assert!(foo.contains(tf64(3.0).after()));
+    assert!(foo.contains(tf64(5.0).before()));
+    assert!(foo.contains(tf64(7.0).after()));
+    assert!(foo.contains(tf64(9.0).before()));
 }
 
 #[test]
@@ -297,7 +297,7 @@ fn test_floats2() {
 
             let mut b = $ty::new(0.0);
             $ty::assign_sub_one(&mut b);
-            assert_eq!(b, $ty::new(0.0).prev());
+            assert_eq!(b, $ty::new(0.0).before());
         )*
     }}
 }
@@ -314,7 +314,7 @@ fn test_floats2_nightly() {
 
             let mut b = $ty::new(0.0);
             $ty::assign_sub_one(&mut b);
-            assert_eq!(b, $ty::new(0.0).prev());
+            assert_eq!(b, $ty::new(0.0).before());
         )*
     }}
 }
@@ -332,11 +332,11 @@ fn test_floats() {
 
     let mut b = tf64(0.0);
     TotalF64::assign_sub_one(&mut b);
-    assert_eq!(b, tf64(0.0).prev());
+    assert_eq!(b, tf64(0.0).before());
 
     let mut b = tf32(0.0);
     TotalF32::assign_sub_one(&mut b);
-    assert_eq!(b, tf32(0.0).prev());
+    assert_eq!(b, tf32(0.0).before());
 }
 
 #[test]
@@ -349,7 +349,7 @@ fn test_floats_nightly() {
 
     let mut b = tf16(0.0);
     TotalF16::assign_sub_one(&mut b);
-    assert_eq!(b, tf16(0.0).prev());
+    assert_eq!(b, tf16(0.0).before());
 
     let mut a = TotalF128::range(0.0..=0.0);
     assert_eq!(TotalF128::range_next_back(&mut a), Some(tf128(0.0)));
@@ -357,7 +357,7 @@ fn test_floats_nightly() {
 
     let mut b = tf128(0.0);
     TotalF128::assign_sub_one(&mut b);
-    assert_eq!(b, tf128(0.0).prev());
+    assert_eq!(b, tf128(0.0).before());
 }
 
 #[test]
@@ -432,31 +432,31 @@ fn total_complement() {
         $(
             let set = RangeSetBlaze::from_iter([$ty::MAX..=$ty::MAX]);
             assert!(set.contains($ty::MAX));
-            assert!(!set.contains($ty::MAX.prev()));
+            assert!(!set.contains($ty::MAX.before()));
             assert_eq!(set.len(), 1);
             let set = !set;
             assert!(!set.contains($ty::MAX));
-            assert!(set.contains($ty::MAX.prev()));
+            assert!(set.contains($ty::MAX.before()));
             assert_eq!(set.len(), $ty::MAX_SIZE - 1);
 
             let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN]);
             assert!(set.contains($ty::MIN));
-            assert!(!set.contains($ty::MIN.next()));
+            assert!(!set.contains($ty::MIN.after()));
             assert_eq!(set.len(), 1);
             let set = !set;
             assert!(!set.contains($ty::MIN));
-            assert!(set.contains($ty::MIN.next()));
+            assert!(set.contains($ty::MIN.after()));
             assert_eq!(set.len(), $ty::MAX_SIZE - 1);
 
-            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN.next()]);
+            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN.after()]);
             assert!(set.contains($ty::MIN));
-            assert!(set.contains($ty::MIN.next()));
-            assert!(!set.contains($ty::MIN.next().next()));
+            assert!(set.contains($ty::MIN.after()));
+            assert!(!set.contains($ty::MIN.after().after()));
             assert_eq!(set.len(), 2);
             let set = !set;
             assert!(!set.contains($ty::MIN));
-            assert!(!set.contains($ty::MIN.next()));
-            assert!(set.contains($ty::MIN.next().next()));
+            assert!(!set.contains($ty::MIN.after()));
+            assert!(set.contains($ty::MIN.after().after()));
             assert_eq!(set.len(), $ty::MAX_SIZE - 2);
         )*
     }}
@@ -471,31 +471,31 @@ fn total_complement_nightly() {
         $(
             let set = RangeSetBlaze::from_iter([$ty::MAX..=$ty::MAX]);
             assert!(set.contains($ty::MAX));
-            assert!(!set.contains($ty::MAX.prev()));
+            assert!(!set.contains($ty::MAX.before()));
             assert_eq!(set.len(), 1);
             let set = !set;
             assert!(!set.contains($ty::MAX));
-            assert!(set.contains($ty::MAX.prev()));
+            assert!(set.contains($ty::MAX.before()));
             assert_eq!(set.len(), $ty::MAX_SIZE - 1);
 
             let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN]);
             assert!(set.contains($ty::MIN));
-            assert!(!set.contains($ty::MIN.next()));
+            assert!(!set.contains($ty::MIN.after()));
             assert_eq!(set.len(), 1);
             let set = !set;
             assert!(!set.contains($ty::MIN));
-            assert!(set.contains($ty::MIN.next()));
+            assert!(set.contains($ty::MIN.after()));
             assert_eq!(set.len(), $ty::MAX_SIZE - 1);
 
-            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN.next()]);
+            let set = RangeSetBlaze::from_iter([$ty::MIN..=$ty::MIN.after()]);
             assert!(set.contains($ty::MIN));
-            assert!(set.contains($ty::MIN.next()));
-            assert!(!set.contains($ty::MIN.next().next()));
+            assert!(set.contains($ty::MIN.after()));
+            assert!(!set.contains($ty::MIN.after().after()));
             assert_eq!(set.len(), 2);
             let set = !set;
             assert!(!set.contains($ty::MIN));
-            assert!(!set.contains($ty::MIN.next()));
-            assert!(set.contains($ty::MIN.next().next()));
+            assert!(!set.contains($ty::MIN.after()));
+            assert!(set.contains($ty::MIN.after().after()));
             assert_eq!(set.len(), $ty::MAX_SIZE - 2);
         )*
     }}
@@ -507,31 +507,31 @@ fn total_complement_nightly() {
 fn total_complement_total128() {
     let set = RangeSetBlaze::from_iter([TotalF128::MAX..=TotalF128::MAX]);
     assert!(set.contains(TotalF128::MAX));
-    assert!(!set.contains(TotalF128::MAX.prev()));
+    assert!(!set.contains(TotalF128::MAX.before()));
     assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(1));
     let set = !set;
     assert!(!set.contains(TotalF128::MAX));
-    assert!(set.contains(TotalF128::MAX.prev()));
+    assert!(set.contains(TotalF128::MAX.before()));
     assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(u128::MAX));
 
     let set = RangeSetBlaze::from_iter([TotalF128::MIN..=TotalF128::MIN]);
     assert!(set.contains(TotalF128::MIN));
-    assert!(!set.contains(TotalF128::MIN.next()));
+    assert!(!set.contains(TotalF128::MIN.after()));
     assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(1));
     let set = !set;
     assert!(!set.contains(TotalF128::MIN));
-    assert!(set.contains(TotalF128::MIN.next()));
+    assert!(set.contains(TotalF128::MIN.after()));
     assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(u128::MAX));
 
-    let set = RangeSetBlaze::from_iter([TotalF128::MIN..=TotalF128::MIN.next()]);
+    let set = RangeSetBlaze::from_iter([TotalF128::MIN..=TotalF128::MIN.after()]);
     assert!(set.contains(TotalF128::MIN));
-    assert!(set.contains(TotalF128::MIN.next()));
-    assert!(!set.contains(TotalF128::MIN.next().next()));
+    assert!(set.contains(TotalF128::MIN.after()));
+    assert!(!set.contains(TotalF128::MIN.after().after()));
     assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(2));
     let set = !set;
     assert!(!set.contains(TotalF128::MIN));
-    assert!(!set.contains(TotalF128::MIN.next()));
-    assert!(set.contains(TotalF128::MIN.next().next()));
+    assert!(!set.contains(TotalF128::MIN.after()));
+    assert!(set.contains(TotalF128::MIN.after().after()));
     assert_eq!(set.len(), UIntPlusOne::<u128>::UInt(u128::MAX - 1));
 }
 
@@ -678,10 +678,10 @@ fn finite_slice_unchecked_bypasses_validation_f128() {
 // Why didn't the exhaustive `full_16` test above already catch this?
 //
 // `full_16` walks the *already-valid* total-order domain: it starts at
-// `$ty::MIN` (a finite extreme) and steps forward only via `.next()`, whose
+// `$ty::MIN` (a finite extreme) and steps forward only via `.after()`, whose
 // own logic already knows to skip the -0.0 ordered slot and never produces
 // NaN. It exhaustively checks internal self-consistency of that walk
-// (safe_len, inclusive_end_from_start, next/prev symmetry) — it never routes
+// (safe_len, inclusive_end_from_start, after/before symmetry) — it never routes
 // arbitrary/adversarial *input* bit patterns (NaN, -0.0, +/-infinity) through
 // the other public entry points (`values`, `range`, `slice`). Below is the
 // same exhaustive-over-all-bits idea as `full_16`, but aimed at the
@@ -788,26 +788,26 @@ fn full_16() {
                 assert_eq!($ty::inclusive_end_from_start($ty::MIN, count+1), x);
                 assert_eq!($ty::start_from_inclusive_end(x, count+1), $ty::MIN);
                 if x != $ty::MIN  {
-                    assert_eq!(x.prev().next(), x);
-                    assert!(x.prev() < x);
-                    assert_eq!($ty::safe_len(&(x.prev()..=x)), 2);
-                    assert_eq!($ty::start_from_inclusive_end(x, 2), x.prev());
-                    assert!(x.prev() < x);
-                    assert!(x > x.prev());
+                    assert_eq!(x.before().after(), x);
+                    assert!(x.before() < x);
+                    assert_eq!($ty::safe_len(&(x.before()..=x)), 2);
+                    assert_eq!($ty::start_from_inclusive_end(x, 2), x.before());
+                    assert!(x.before() < x);
+                    assert!(x > x.before());
                     assert!(x == x);
                 }
                 if x != $ty::MAX {
-                    assert_eq!(x.next().prev(), x);
-                    assert!(x.next() > x);
-                    assert_eq!($ty::safe_len(&(x..=x.next())), 2);
-                    assert_eq!($ty::inclusive_end_from_start(x,2), x.next());
-                    assert!(x.next() > x);
-                    assert!(x < x.next());
+                    assert_eq!(x.after().before(), x);
+                    assert!(x.after() > x);
+                    assert_eq!($ty::safe_len(&(x..=x.after())), 2);
+                    assert_eq!($ty::inclusive_end_from_start(x,2), x.after());
+                    assert!(x.after() > x);
+                    assert!(x < x.after());
                 }
                 if x == $ty::MAX {
                     break;
                 }
-                x = x.next();
+                x = x.after();
                 count += 1;
             }
         )*

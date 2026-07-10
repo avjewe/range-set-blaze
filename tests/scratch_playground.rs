@@ -2,7 +2,7 @@
 #![cfg(feature = "total_float_experimental")]
 use range_set_blaze::RangeSetBlaze;
 use range_set_blaze::finite::ff32;
-use range_set_blaze::{FiniteF32, FiniteF64, TotalF32, TotalF64};
+use range_set_blaze::{FiniteF32, TotalF32};
 
 /// Playground for the `from_ordered` bug: `FiniteF32` promises to only ever
 /// hold finite, non-NaN, non-negative-zero values -- `new`/`try_new` enforce
@@ -46,34 +46,6 @@ fn scratch7_from_ordered_bug() {
         FiniteF32::new(-0.0)
     );
 }
-
-/// Scratch-only naming experiment: `.after()`/`.before()` as an alternative
-/// spelling for `.next()`/`.prev()`. Lives only in this playground file, not
-/// in the crate — just delegates to the real methods so the idiom
-/// `x.after()..=y.before()` can be tried out.
-trait BeforeAfter {
-    #[must_use]
-    fn after(self) -> Self;
-    #[must_use]
-    fn before(self) -> Self;
-}
-
-macro_rules! impl_before_after {
-    ($($ty:ty),* $(,)?) => {
-        $(
-            impl BeforeAfter for $ty {
-                fn after(self) -> Self {
-                    self.next()
-                }
-                fn before(self) -> Self {
-                    self.prev()
-                }
-            }
-        )*
-    };
-}
-
-impl_before_after!(FiniteF32, FiniteF64, TotalF32, TotalF64);
 
 #[test]
 #[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
@@ -127,7 +99,7 @@ fn scratch4() {
 #[ignore = "scratch playground, not a real test — run explicitly with `cargo test --test scratch_playground -- --ignored`"]
 fn scratch5_before_after() {
     // The idiom under test: exclusive bounds (2.0, 5.0) expressed as an
-    // inclusive range via .after()/.before() instead of .next()/.prev().
+    // inclusive range via .after()/.before().
     let set = RangeSetBlaze::from_iter([ff32(2.0).after()..=ff32(5.0).before()]);
     println!("open interval (2.0, 5.0) as Finite: {set:?}");
     assert!(!set.contains(ff32(2.0)));
