@@ -7,6 +7,8 @@
 //! Finite: Only finite floating point values are valid, e.g. `f64::MIN..=f64::MAX`. Also, -0.0 is treated as 0.0
 //!
 //! Each of those is available in four sizes: 16, 32, 64 and 128.
+//! 
+//! ## Small Example
 //!
 //!```
 //! use range_set_blaze::{RangeSetBlaze, FiniteF64, TotalF32, TotalF64};
@@ -23,11 +25,8 @@
 //! assert!(!set.contains(TotalF32::new(6.0)));
 //!```
 //!
-//! ## Full worked example
+//! ## Large Example
 //!
-//! `examples/float_maps.rs` builds a `RangeMapBlaze<FiniteF32, u8>` dispatch table by sweeping
-//! every finite `f32` in `[-pi, pi]`, computing how many Taylor-series terms `cos(x)` needs at
-//! each point. Its full source (kept in sync automatically via `include_str!`) is below.
 #![doc = concat!(
     "````rust,no_run\n",
     include_str!("../examples/float_maps.rs"),

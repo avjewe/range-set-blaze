@@ -1,7 +1,8 @@
 //! TODO000: delete this scratch file and the matching .vscode/settings.json entry when done
 use range_set_blaze::RangeSetBlaze;
 use range_set_blaze::finite::ff32;
-use range_set_blaze::{FiniteF32, FiniteF64, TotalF32, TotalF64};
+use range_set_blaze::total::tf64;
+use range_set_blaze::{FiniteF32, FiniteF64, RangeMapBlaze, TotalF32, TotalF64};
 
 /// Playground for the `from_ordered` bug: `FiniteF32` promises to only ever
 /// hold finite, non-NaN, non-negative-zero values -- `new`/`try_new` enforce
@@ -164,4 +165,64 @@ fn scratch6_tiny() {
     println!("-TINY = {neg_tiny:e}");
     assert_eq!(ff32(0.0).before(), ff32(neg_tiny));
     assert_eq!(ff32(neg_tiny).after(), ff32(0.0));
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Category {
+    NaN,
+    NegInfinity,
+    PosInfinity,
+    MinusZero,
+    Normal,
+}
+
+#[test]
+fn scratch8_tf64_categories() {
+    // Build up a category map from system constants alone: NaN, Infinity,
+    // "minus zero", and Normal, using TotalF64's total_cmp-based order:
+    //   MIN (most-negative NaN) < ... < NEG_INFINITY < ... < -0.0 < 0.0 < ... < INFINITY < ... < MAX (most-positive NaN)
+    // This is not exhaustive (it treats every other finite value as "Normal"
+    // regardless of subnormal/normal-in-the-IEEE-sense distinctions), but it
+    // shows how far you can get from just NEG_INFINITY/INFINITY/MIN/MAX/0.0/-0.0.
+    // Overlapping ranges have right-to-left precedence (later entries win),
+    // so we can build this up coarse-to-fine instead of carving out exact
+    // gaps by hand: start with everything NaN, carve out the finite range
+    // between the infinities as Normal, then punch in the infinities and
+    // -0.0 as exceptions on top.
+    let category_map = RangeMapBlaze::from_iter([
+        (TotalF64::MIN..=TotalF64::MAX, Category::NaN), // everything else is NaN by default
+        (tf64(f64::NEG_INFINITY)..=tf64(f64::INFINITY), Category::Normal), // everything between the infinities is Normal, inclusive (?!)
+        (tf64(f64::NEG_INFINITY)..=tf64(f64::NEG_INFINITY), Category::NegInfinity), // carve out the infinities as exceptions
+        (tf64(f64::INFINITY)..=tf64(f64::INFINITY), Category::PosInfinity), // carve out the infinities as exceptions
+        (tf64(-0.0)..=tf64(-0.0), Category::MinusZero), // carve out -0.0 as an exception
+    ]);
+
+    for (range, category) in category_map.range_values() {
+        let (start, end) = (range.start().into_inner(), range.end().into_inner());
+        println!(
+            "{start:e} (0x{:016x}) ..= {end:e} (0x{:016x}) -> {category:?}",
+            start.to_bits(),
+            end.to_bits(),
+        );
+    }
+
+    // Spot-check a handful of values land where expected.
+    assert_eq!(category_map.get(tf64(f64::NAN)), Some(&Category::NaN));
+    assert_eq!(category_map.get(tf64(-f64::NAN)), Some(&Category::NaN));
+    assert_eq!(
+        category_map.get(tf64(f64::NEG_INFINITY)),
+        Some(&Category::NegInfinity)
+    );
+    assert_eq!(
+        category_map.get(tf64(f64::INFINITY)),
+        Some(&Category::PosInfinity)
+    );
+    assert_eq!(category_map.get(tf64(-0.0)), Some(&Category::MinusZero));
+    assert_eq!(category_map.get(tf64(0.0)), Some(&Category::Normal));
+    assert_eq!(category_map.get(tf64(1.0)), Some(&Category::Normal));
+    assert_eq!(
+        category_map.get(tf64(f64::MIN_POSITIVE)),
+        Some(&Category::Normal)
+    );
+    assert_eq!(category_map.get(tf64(-1.5e300)), Some(&Category::Normal));
 }

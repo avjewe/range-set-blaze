@@ -61,9 +61,9 @@ fn main() {
     let scope = RangeSetBlaze::from_iter([ff32(-PI)..=ff32(PI)]);
 
     // Split scope across all available cores; each thread sweeps its own
-    // chunk into a local RangeMapBlaze, then `|` (union) merges them --
-    // cheap here since the chunks are domain-disjoint by construction.
-    let num_chunks = available_parallelism().map_or(1, |n| n.get());
+    // chunk into a local RangeMapBlaze, then union (also known as `|` and `bitor`) merges them --
+    // cheap ranges in each chunk turns out to be small.
+    let num_chunks = available_parallelism().map_or(1, std::num::NonZero::get);
     let term_map: RangeMapBlaze<FiniteF32, u8> = chunks(&scope, num_chunks)
         .into_par_iter()
         .map(|chunk| chunk.iter().map(|x| (x, terms_needed(x))).collect())
@@ -75,7 +75,7 @@ fn main() {
     );
     for (range, n) in term_map.range_values() {
         let (start, end) = (range.start().into_inner(), range.end().into_inner());
-        let mid = (start + end) / 2.0;
+        let mid = f32::midpoint(start, end);
         let taylor = taylor_cos(mid, *n);
         let std = mid.cos();
         println!(
@@ -114,7 +114,7 @@ fn chunks(scope: &RangeSetBlaze<FiniteF32>, n: usize) -> Vec<RangeSetBlaze<Finit
     let Some(mut start) = scope.first() else {
         return Vec::new();
     };
-    let n = (n as u32).clamp(1, scope.len());
+    let n = u32::try_from(n).unwrap_or(u32::MAX).clamp(1, scope.len());
     let (base_len, remainder) = (scope.len() / n, scope.len() % n);
 
     (0..n)
@@ -130,6 +130,9 @@ fn chunks(scope: &RangeSetBlaze<FiniteF32>, n: usize) -> Vec<RangeSetBlaze<Finit
 
 /// `cos(x)` via `terms` terms of its Taylor series, for display purposes
 /// only -- `terms_needed` never evaluates the series itself.
+// `2 * k * (2 * k - 1)` is at most `2 * 255 * 509 = 259_590` (`k` is `u8`), well within
+// `f32`'s 24-bit mantissa, so the `as f32` below is exact, not lossy.
+#[allow(clippy::cast_precision_loss)]
 fn taylor_cos(x: f32, terms: u8) -> f32 {
     let xx = x * x;
     let mut term = 1.0_f32;
@@ -149,7 +152,7 @@ fn mean_terms(term_map: &RangeMapBlaze<FiniteF32, u8>) -> f64 {
     let mut total_count = 0.0;
     for (range, n) in term_map.range_values() {
         let len = FiniteF32::safe_len_to_f64_lossy(FiniteF32::safe_len(&range));
-        weighted_sum += len * f64::from(*n);
+        weighted_sum = len.mul_add(f64::from(*n), weighted_sum);
         total_count += len;
     }
     weighted_sum / total_count
