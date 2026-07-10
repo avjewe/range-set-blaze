@@ -817,3 +817,66 @@ fn finite_f32_from_ordered_accepts_nan_ordered_bug() {
         value.into_inner()
     );
 }
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn tf64_categories() {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum Category {
+        NaN,
+        NegInfinity,
+        PosInfinity,
+        MinusZero,
+        Normal,
+    }
+
+    // Build a category map using TotalF64's total_cmp order (NaN < -Inf < -0.0 < 0.0 < Inf < NaN).
+    // Overlapping ranges have right-to-left precedence, so we go coarse-to-fine: start with
+    // NaN everywhere, then carve out Normal, then the infinities and -0.0 as exceptions.
+    let category_map = RangeMapBlaze::from_iter([
+        (TotalF64::MIN..=TotalF64::MAX, Category::NaN), // everything else is NaN by default
+        (tf64(f64::NEG_INFINITY)..=tf64(f64::INFINITY), Category::Normal), // everything between the infinities is Normal, inclusive (?!)
+        (tf64(f64::NEG_INFINITY)..=tf64(f64::NEG_INFINITY), Category::NegInfinity), // carve out the infinities as exceptions
+        (tf64(f64::INFINITY)..=tf64(f64::INFINITY), Category::PosInfinity), // carve out the infinities as exceptions
+        (tf64(-0.0)..=tf64(-0.0), Category::MinusZero), // carve out -0.0 as an exception
+    ]);
+
+    for (range, category) in category_map.range_values() {
+        let (start, end) = (range.start().into_inner(), range.end().into_inner());
+        println!(
+            "{start:e} (0x{:016x}) ..= {end:e} (0x{:016x}) -> {category:?}",
+            start.to_bits(),
+            end.to_bits(),
+        );
+    }
+
+    /* Output:
+    NaN  (0xffffffffffffffff) ..= NaN  (0xfff0000000000001) -> NaN
+    -inf (0xfff0000000000000) ..= -inf (0xfff0000000000000) -> NegInfinity
+    -1.7976931348623157e308 (0xffefffffffffffff) ..= -5e-324 (0x8000000000000001) -> Normal
+    -0e0 (0x8000000000000000) ..= -0e0 (0x8000000000000000) -> MinusZero
+    0e0  (0x0000000000000000) ..= 1.7976931348623157e308 (0x7fefffffffffffff) -> Normal
+    inf  (0x7ff0000000000000) ..= inf  (0x7ff0000000000000) -> PosInfinity
+    NaN  (0x7ff0000000000001) ..= NaN  (0x7fffffffffffffff) -> NaN
+    */
+
+    // Spot-check a handful of values land where expected.
+    assert_eq!(category_map.get(tf64(f64::NAN)), Some(&Category::NaN));
+    assert_eq!(category_map.get(tf64(-f64::NAN)), Some(&Category::NaN));
+    assert_eq!(
+        category_map.get(tf64(f64::NEG_INFINITY)),
+        Some(&Category::NegInfinity)
+    );
+    assert_eq!(
+        category_map.get(tf64(f64::INFINITY)),
+        Some(&Category::PosInfinity)
+    );
+    assert_eq!(category_map.get(tf64(-0.0)), Some(&Category::MinusZero));
+    assert_eq!(category_map.get(tf64(0.0)), Some(&Category::Normal));
+    assert_eq!(category_map.get(tf64(1.0)), Some(&Category::Normal));
+    assert_eq!(
+        category_map.get(tf64(f64::MIN_POSITIVE)),
+        Some(&Category::Normal)
+    );
+    assert_eq!(category_map.get(tf64(-1.5e300)), Some(&Category::Normal));
+}
