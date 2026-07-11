@@ -169,13 +169,11 @@ See the internal release notes, but in brief:
 2. Update `CHANGELOG.md`
 3. Run `just check-all` locally
 4. Run `just test-wasm` locally
-5. Run `just audit` locally
-6. Run `just publish-dry-all`
-7. Run `just ci-full` locally
-8. Create and merge PR
-9. Tag release: `git tag v0.x.y`
-10. Push tag: `git push origin v0.x.y`
-11. Publish: `cargo publish`
+5. Run `just ci-full` locally; this covers `just audit` and `just publish-dry-all`
+6. Create and merge PR
+7. Tag release: `git tag v0.x.y`
+8. Push tag: `git push origin v0.x.y`
+9. Publish: `cargo publish`
 
 ## Getting Help
 
