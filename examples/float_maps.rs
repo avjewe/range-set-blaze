@@ -3,7 +3,7 @@
 //!
 //! But how many terms are actually needed? This example sweeps every finite
 //! `f32` value in `[-pi, pi]` (~2.16 billion values), computes the smallest
-//! number of Taylor terms whose remainder bound guarantees an error below
+//! number of Taylor terms needed to reach
 //! `TARGET_ERROR` (1e-7), and tabulates the results in a
 //! `RangeMapBlaze<FiniteF32, u8>`.
 //!
@@ -26,25 +26,7 @@ use range_set_blaze::{
     finite::{FiniteRangeExt, ff32},
 };
 use rayon::prelude::*;
-use std::{ops::BitOr, thread::available_parallelism};
-
-// `thousands` is a native-only dev-dependency (see the wasm32 dev-dependency
-// split in Cargo.toml), but `cargo test` still type-checks this example on
-// wasm targets. Fall back to plain `Display` there so the example builds
-// everywhere; the underscore grouping is purely cosmetic.
-#[cfg(not(target_arch = "wasm32"))]
-use thousands::Separable;
-
-#[cfg(target_arch = "wasm32")]
-trait Separable {
-    fn separate_with_underscores(&self) -> String;
-}
-#[cfg(target_arch = "wasm32")]
-impl<T: ToString> Separable for T {
-    fn separate_with_underscores(&self) -> String {
-        self.to_string()
-    }
-}
+use std::{num::NonZero, ops::BitOr, thread::available_parallelism};
 
 const TARGET_ERROR: f64 = 1e-7;
 
@@ -83,7 +65,7 @@ fn main() {
     // Split scope across all available cores; each thread sweeps its own
     // chunk into a local RangeMapBlaze, then union (also known as `|` and `bitor`)
     // merges them --this is cheap because the # of ranges in each chunk turns out to be small.
-    let num_chunks = available_parallelism().map_or(1, std::num::NonZero::get);
+    let num_chunks = available_parallelism().map_or(1, NonZero::get);
     let term_map: RangeMapBlaze<FiniteF32, u8> = chunks(&scope, num_chunks)
         .into_par_iter()
         .map(|chunk| chunk.iter().map(|x| (x, terms_needed(x))).collect())
@@ -104,13 +86,23 @@ fn main() {
     }
     println!(
         "\n{} disjoint ranges cover all {} in-scope f32 values.",
-        term_map.range_values().count().separate_with_underscores(),
-        term_map.len().separate_with_underscores()
+        separate_with_underscores(term_map.range_values().count()),
+        separate_with_underscores(term_map.len())
     );
     println!(
         "Mean terms per in-scope f32 value (each value weighted equally): {:.2}",
         mean_terms(&term_map)
     );
+}
+
+fn separate_with_underscores(value: impl ToString) -> String {
+    let mut value = value.to_string();
+    let mut index = value.len();
+    while index > 3 {
+        index -= 3;
+        value.insert(index, '_');
+    }
+    value
 }
 
 /// Smallest `N` (1..=`u8::MAX`) for which the remainder bound

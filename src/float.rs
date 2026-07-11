@@ -51,21 +51,23 @@
 //! ## Example: Wrapping Primitive (e.g. f32, f64) Ranges
 //!
 //! ```
-//! use range_set_blaze::{RangeSetBlaze, FiniteF64, TotalF32, TotalF64};
-//! let set = RangeSetBlaze::from_iter([TotalF64::new(3.0)..=TotalF64::new(5.0)]);
-//! assert!(set.contains(TotalF64::new(3.1)));
-//! assert!(!set.contains(TotalF64::new(2.9)));
+//! use range_set_blaze::{finite::ff64, total::{tf32, tf64}, RangeSetBlaze};
 //!
-//! let set = RangeSetBlaze::from(FiniteF64::from_primitive_range(3.0..=5.0));
-//! assert!(set.contains(FiniteF64::new(4.9)));
-//! assert!(!set.contains(FiniteF64::new(5.1)));
+//! // Alternatively, use `TotalF64::new`, `TotalF32::new`, and `FiniteF64::new`.
+//! let set = RangeSetBlaze::from_iter([tf64(3.0)..=tf64(5.0)]);
+//! assert!(set.contains(tf64(3.1)));
+//! assert!(!set.contains(tf64(2.9)));
 //!
-//! let set = RangeSetBlaze::from_iter(TotalF32::from_primitive_ranges([3.0..=5.0, 7.0..=9.0]));
-//! assert!(set.contains(TotalF32::new(4.0)));
-//! assert!(!set.contains(TotalF32::new(6.0)));
+//! let set = RangeSetBlaze::from(ff64(3.0)..=ff64(5.0));
+//! assert!(set.contains(ff64(4.9)));
+//! assert!(!set.contains(ff64(5.1)));
+//!
+//! let set = RangeSetBlaze::from_iter([tf32(3.0)..=tf32(5.0), tf32(7.0)..=tf32(9.0)]);
+//! assert!(set.contains(tf32(4.0)));
+//! assert!(!set.contains(tf32(6.0)));
 //! ```
 //!
-//! ## Example: Coalescing Over Two Billion f32's
+//! ## Example: Coalescing Two Billion f32's
 #![doc = concat!(
     "````rust,no_run\n",
     include_str!("../examples/float_maps.rs"),
