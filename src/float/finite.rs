@@ -62,14 +62,10 @@ pub const fn ff128(x: f128) -> FiniteF128 {
 // eligible methods const, then have these shorthands call Finite::new directly. That will also
 // let their negative-zero normalization share `FiniteFloat::normalize` with runtime paths.
 macro_rules! finite_const_constructor {
-    ($name:ident, $primitive:ty, $finite:ty, $exponent_mask:expr) => {
+    ($name:ident, $primitive:ty, $finite:ty) => {
         const fn $name(x: $primitive) -> $finite {
-            let bits = x.to_bits();
-            assert!(
-                bits & $exponent_mask != $exponent_mask,
-                "Finite type requires a finite value"
-            );
-            let normalized = if bits == (-0.0 as $primitive).to_bits() {
+            assert!(x.is_finite(), "Finite type requires a finite value");
+            let normalized = if x == 0.0 && x.is_sign_negative() {
                 0.0
             } else {
                 x
@@ -79,17 +75,12 @@ macro_rules! finite_const_constructor {
     };
 }
 
-finite_const_constructor!(finite_f64, f64, FiniteF64, 0x7ff0_0000_0000_0000);
-finite_const_constructor!(finite_f32, f32, FiniteF32, 0x7f80_0000);
+finite_const_constructor!(finite_f64, f64, FiniteF64);
+finite_const_constructor!(finite_f32, f32, FiniteF32);
 #[cfg(feature = "float_nightly_experimental")]
-finite_const_constructor!(finite_f16, f16, FiniteF16, 0x7c00);
+finite_const_constructor!(finite_f16, f16, FiniteF16);
 #[cfg(feature = "float_nightly_experimental")]
-finite_const_constructor!(
-    finite_f128,
-    f128,
-    FiniteF128,
-    0x7fff_0000_0000_0000_0000_0000_0000_0000
-);
+finite_const_constructor!(finite_f128, f128, FiniteF128);
 
 /// Experimental: A transparent wrapper around [`f64`] and friends with total ordering.
 ///
