@@ -142,50 +142,28 @@ pub(super) trait TotalFloatImpl:
 // 1) Share code with FiniteFloat
 // 2) Allow use from in a const context, which is not possible with trait methods.
 
-pub(super) const fn to_ordered_64(x: f64) -> i64 {
-    let mut bits = x.to_bits().cast_signed();
-    bits ^= ((bits >> 63).cast_unsigned() >> 1).cast_signed();
-    bits
+macro_rules! impl_ordered_transform {
+    ($primitive:ty, $ordered:ty, $to_ordered:ident, $from_ordered:ident, $sign_shift:literal) => {
+        pub(super) const fn $to_ordered(x: $primitive) -> $ordered {
+            let mut bits = x.to_bits().cast_signed();
+            bits ^= ((bits >> $sign_shift).cast_unsigned() >> 1).cast_signed();
+            bits
+        }
+
+        pub(super) const fn $from_ordered(mut bits: $ordered) -> $primitive {
+            // Reversing the XOR transformation
+            bits ^= ((bits >> $sign_shift).cast_unsigned() >> 1).cast_signed();
+            <$primitive>::from_bits(bits.cast_unsigned())
+        }
+    };
 }
-pub(super) const fn from_ordered_64(mut bits: i64) -> f64 {
-    // Reversing the XOR transformation
-    bits ^= ((bits >> 63).cast_unsigned() >> 1).cast_signed();
-    f64::from_bits(bits.cast_unsigned())
-}
-pub(super) const fn to_ordered_32(x: f32) -> i32 {
-    let mut bits = x.to_bits().cast_signed();
-    bits ^= ((bits >> 31).cast_unsigned() >> 1).cast_signed();
-    bits
-}
-pub(super) const fn from_ordered_32(mut bits: i32) -> f32 {
-    // Reversing the XOR transformation
-    bits ^= ((bits >> 31).cast_unsigned() >> 1).cast_signed();
-    f32::from_bits(bits.cast_unsigned())
-}
+
+impl_ordered_transform!(f64, i64, to_ordered_64, from_ordered_64, 63);
+impl_ordered_transform!(f32, i32, to_ordered_32, from_ordered_32, 31);
 #[cfg(feature = "float_nightly_experimental")]
-pub(super) const fn to_ordered_16(x: f16) -> i16 {
-    let mut bits = x.to_bits().cast_signed();
-    bits ^= ((bits >> 15).cast_unsigned() >> 1).cast_signed();
-    bits
-}
+impl_ordered_transform!(f16, i16, to_ordered_16, from_ordered_16, 15);
 #[cfg(feature = "float_nightly_experimental")]
-pub(super) const fn from_ordered_16(mut bits: i16) -> f16 {
-    // Reversing the XOR transformation
-    bits ^= ((bits >> 15).cast_unsigned() >> 1).cast_signed();
-    f16::from_bits(bits.cast_unsigned())
-}
-#[cfg(feature = "float_nightly_experimental")]
-pub(super) const fn to_ordered_128(x: f128) -> i128 {
-    let mut bits = x.to_bits().cast_signed();
-    bits ^= ((bits >> 127).cast_unsigned() >> 1).cast_signed();
-    bits
-}
-#[cfg(feature = "float_nightly_experimental")]
-pub(super) const fn from_ordered_128(mut bits: i128) -> f128 {
-    // Reversing the XOR transformation
-    bits ^= ((bits >> 127).cast_unsigned() >> 1).cast_signed();
-    f128::from_bits(bits.cast_unsigned())
-}
+impl_ordered_transform!(f128, i128, to_ordered_128, from_ordered_128, 127);
 
 macro_rules! impl_total_ops {
     ($to_ordered:ident) => {
