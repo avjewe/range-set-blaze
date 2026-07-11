@@ -5,7 +5,7 @@
 #![cfg_attr(feature = "float_nightly_experimental", feature(f16))]
 #![cfg_attr(feature = "float_nightly_experimental", feature(f128))]
 
-use num_traits::identities::One;
+use num_traits::identities::{One, Zero};
 #[cfg(feature = "float_nightly_experimental")]
 use range_set_blaze::UIntPlusOne;
 #[cfg(feature = "float_nightly_experimental")]
@@ -29,8 +29,24 @@ const CONST_FINITE_F64: FiniteF64 = ff64(-0.0);
 const CONST_FINITE_F16: FiniteF16 = ff16(1.0);
 #[cfg(feature = "float_nightly_experimental")]
 const CONST_FINITE_F128: FiniteF128 = ff128(-0.0);
-#[cfg(feature = "float_nightly_experimental")]
-const BIG_ZERO: UIntPlusOne<u128> = UIntPlusOne::<u128>::UInt(0);
+macro_rules! assert_empty_complement {
+    (map, $ty:ty) => {
+        let empty = RangeMapBlaze::<$ty, u8>::new();
+        assert_eq!(empty.len(), <$ty as Integer>::SafeLen::zero());
+        let full = !&empty;
+        assert_eq!(full.len(), <$ty>::MAX_SIZE);
+        let empty = !&full;
+        assert_eq!(empty.len(), <$ty as Integer>::SafeLen::zero());
+    };
+    (set, $ty:ty) => {
+        let empty = RangeSetBlaze::<$ty>::new();
+        assert_eq!(empty.len(), <$ty as Integer>::SafeLen::zero());
+        let full = !&empty;
+        assert_eq!(full.len(), <$ty>::MAX_SIZE);
+        let empty = !&full;
+        assert_eq!(empty.len(), <$ty as Integer>::SafeLen::zero());
+    };
+}
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
@@ -58,33 +74,9 @@ fn map_complement0() {
     assert_ne!(tf32(0.0), tf32(-0.0));
     assert_eq!(ff32(0.0), ff32(-0.0));
 
-    let empty = RangeMapBlaze::<TotalF64, u8>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), i128::from(u64::MAX) + 1);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
-
-    let empty = RangeMapBlaze::<TotalF32, u8>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), i64::from(u32::MAX) + 1);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
-
-    let empty = RangeMapBlaze::<FiniteF64, u8>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), FiniteF64::MAX_SIZE);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
-
-    let empty = RangeMapBlaze::<FiniteF32, u8>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), FiniteF32::MAX_SIZE);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
+    syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
+        $(assert_empty_complement!(map, $ty);)*
+    }}
 }
 
 #[test]
@@ -96,98 +88,26 @@ fn map_complement0_nightly() {
     assert_ne!(tf128(0.0), tf128(-0.0));
     assert_eq!(ff128(0.0), ff128(-0.0));
 
-    let empty = RangeMapBlaze::<TotalF128, u8>::new();
-    assert_eq!(empty.len(), BIG_ZERO);
-    let full = !&empty;
-    assert_eq!(full.len(), UIntPlusOne::<u128>::MaxPlusOne);
-    let empty = !&full;
-    assert_eq!(empty.len(), BIG_ZERO);
-
-    let empty = RangeMapBlaze::<TotalF16, u8>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), i32::from(u16::MAX) + 1);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
-
-    let empty = RangeMapBlaze::<FiniteF128, u8>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), FiniteF128::MAX_SIZE);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
-
-    let empty = RangeMapBlaze::<FiniteF16, u8>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), FiniteF16::MAX_SIZE);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
+    syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
+        $(assert_empty_complement!(map, $ty);)*
+    }}
 }
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn set_complement0() {
-    let empty = RangeSetBlaze::<TotalF64>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), i128::from(u64::MAX) + 1);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
-
-    let empty = RangeSetBlaze::<TotalF32>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), i64::from(u32::MAX) + 1);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
-
-    let empty = RangeSetBlaze::<FiniteF64>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), FiniteF64::MAX_SIZE);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
-
-    let empty = RangeSetBlaze::<FiniteF32>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), FiniteF32::MAX_SIZE);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
+    syntactic_for! { ty in [TotalF32, TotalF64, FiniteF32, FiniteF64] {
+        $(assert_empty_complement!(set, $ty);)*
+    }}
 }
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 #[cfg(feature = "float_nightly_experimental")]
 fn set_complement_nightly() {
-    let empty = RangeSetBlaze::<TotalF128>::new();
-    assert_eq!(empty.len(), BIG_ZERO);
-    let full = !&empty;
-    assert_eq!(full.len(), UIntPlusOne::<u128>::MaxPlusOne);
-    let empty = !&full;
-    assert_eq!(empty.len(), BIG_ZERO);
-
-    let empty = RangeSetBlaze::<TotalF16>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), i32::from(u16::MAX) + 1);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
-
-    let empty = RangeSetBlaze::<FiniteF128>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), FiniteF128::MAX_SIZE);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
-
-    let empty = RangeSetBlaze::<FiniteF16>::new();
-    assert_eq!(empty.len(), 0);
-    let full = !&empty;
-    assert_eq!(full.len(), FiniteF16::MAX_SIZE);
-    let empty = !&full;
-    assert_eq!(empty.len(), 0);
+    syntactic_for! { ty in [TotalF16, TotalF128, FiniteF16, FiniteF128] {
+        $(assert_empty_complement!(set, $ty);)*
+    }}
 }
 
 #[test]
@@ -368,47 +288,6 @@ fn test_floats2_nightly() {
             assert_eq!(b, $ty::new(0.0).before());
         )*
     }}
-}
-
-#[test]
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-fn test_floats() {
-    let mut a = TotalF32::from_primitive_range(0.0..=0.0);
-    assert_eq!(TotalF32::range_next_back(&mut a), Some(tf32(0.0)));
-    assert_eq!(TotalF32::range_next(&mut a), None);
-
-    let mut a = TotalF64::from_primitive_range(0.0..=0.0);
-    assert_eq!(TotalF64::range_next_back(&mut a), Some(tf64(0.0)));
-    assert_eq!(TotalF64::range_next(&mut a), None);
-
-    let mut b = tf64(0.0);
-    TotalF64::assign_sub_one(&mut b);
-    assert_eq!(b, tf64(0.0).before());
-
-    let mut b = tf32(0.0);
-    TotalF32::assign_sub_one(&mut b);
-    assert_eq!(b, tf32(0.0).before());
-}
-
-#[test]
-#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
-#[cfg(feature = "float_nightly_experimental")]
-fn test_floats_nightly() {
-    let mut a = TotalF16::from_primitive_range(0.0..=0.0);
-    assert_eq!(TotalF16::range_next_back(&mut a), Some(tf16(0.0)));
-    assert_eq!(TotalF16::range_next(&mut a), None);
-
-    let mut b = tf16(0.0);
-    TotalF16::assign_sub_one(&mut b);
-    assert_eq!(b, tf16(0.0).before());
-
-    let mut a = TotalF128::from_primitive_range(0.0..=0.0);
-    assert_eq!(TotalF128::range_next_back(&mut a), Some(tf128(0.0)));
-    assert_eq!(TotalF128::range_next(&mut a), None);
-
-    let mut b = tf128(0.0);
-    TotalF128::assign_sub_one(&mut b);
-    assert_eq!(b, tf128(0.0).before());
 }
 
 #[test]
