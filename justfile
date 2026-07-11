@@ -27,9 +27,9 @@ ci-nightly: test-nightly
 clippy:
     cargo clippy --verbose --all-targets --features "std rog_experimental float_experimental" -- -D clippy::all -A deprecated
 
-# Preview lints on the newest stable toolchain, ignoring the rust-toolchain.toml pin.
-# Run this occasionally to catch new/renamed lints before bumping the pin, instead of
-# being surprised when CI's `stable` runner updates out from under you.
+# Preview lints on the newest stable toolchain, ignoring the pinned CI toolchain.
+# Run this deliberately when evaluating a Rust-toolchain update; it is not part of
+# the normal pinned CI path.
 clippy-latest:
     rustup update stable
     cargo +stable clippy --verbose --all-targets --features "std rog_experimental float_experimental" -- -D clippy::all -A deprecated
@@ -48,6 +48,7 @@ test-stable:
 # Uses `cargo +nightly` (not `rustup override set`) so this is safe to run
 # concurrently with stable steps in the same directory (see `cargo check-all`).
 test-nightly:
+    cargo +nightly check --tests --features "float_nightly_experimental"
     cargo +nightly test --verbose --features "rog_experimental from_slice"
     cargo +nightly test --verbose --all-features
 

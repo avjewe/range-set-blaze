@@ -54,9 +54,9 @@ const TARGET_ERROR: f64 = 1e-7;
 ///   [   1.3804736e0,    1.9118673e0] -> 7 term(s)  (cos(mid): taylor=-0.0753027, std=-0.0753027)
 ///   [   1.9118674e0,    2.4833543e0] -> 8 term(s)  (cos(mid): taylor=-0.5865679, std=-0.5865678)
 ///   [   2.4833546e0,    3.0849004e0] -> 9 term(s)  (cos(mid): taylor=-0.9367867, std=-0.9367868)
-///   [   3.0849006e0,     3.141589e0] -> 10 term(s)  (cos(mid): taylor=-0.9995983, std=-0.9995982)
+///   [   3.0849006e0,    3.1415927e0] -> 10 term(s)  (cos(mid): taylor=-0.9995982, std=-0.9995983)
 ///
-/// 19 disjoint ranges cover all 2_157_060_007 in-scope f32 values.
+/// 19 disjoint ranges cover all 2_157_060_023 in-scope f32 values.
 /// Mean terms per in-scope f32 value (each value weighted equally): 1.23
 /// ```
 fn main() {
@@ -132,7 +132,7 @@ fn chunks(scope: &RangeSetBlaze<FiniteF32>, n: usize) -> Vec<RangeSetBlaze<Finit
     (0..n)
         .map(|i| {
             let len = base_len + u32::from(i < remainder);
-            let end = start.inclusive_end_from_start(len - 1);
+            let end = start.inclusive_end_from_start(len);
             let chunk = RangeSetBlaze::from_iter([start..=end]);
             start = end.after();
             chunk

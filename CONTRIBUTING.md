@@ -168,12 +168,13 @@ See the internal release notes, but in brief:
 1. Update version in `Cargo.toml`
 2. Update `CHANGELOG.md`
 3. Run `just check-all` locally
-4. Run `just test-wasm` locally
-5. Run `just ci-full` locally; this covers `just audit` and `just publish-dry-all`
-6. Create and merge PR
-7. Tag release: `git tag v0.x.y`
-8. Push tag: `git push origin v0.x.y`
-9. Publish: `cargo publish`
+4. Run `just clippy-latest` locally to preview lints from the newest stable Rust; this is an opt-in release check and does not change the pinned CI baseline
+5. Run `just test-wasm` locally
+6. Run `just ci-full` locally; this covers `just audit` and `just publish-dry-all`
+7. Create and merge PR
+8. Tag release: `git tag v0.x.y`
+9. Push tag: `git push origin v0.x.y`
+10. Publish: `cargo publish`
 
 ## Getting Help
 

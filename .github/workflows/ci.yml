@@ -26,6 +26,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Setup Rust
+        # Keep scheduled CI on the pinned baseline. Bump deliberately after checking
+        # newer lints locally with `just clippy-latest`.
         uses: dtolnay/rust-toolchain@1.97.0
         with:
           components: rust-src
@@ -42,6 +44,7 @@ jobs:
       - name: Test Rust Native (nightly)
         run: |
           rustup override set nightly
+          cargo check --tests --features "float_nightly_experimental"
           cargo test --verbose --features "rog_experimental from_slice"
           cargo test --verbose --all-features
       - name: Check dead links in documentation
@@ -132,7 +135,8 @@ jobs:
         uses: dtolnay/rust-toolchain@1.87
       - name: Check MSRV compiles
         run: |
-          cargo check --verbose
-          cargo check --verbose --no-default-features --features "rog_experimental"
-          cargo check --verbose --features "std float_experimental"
-          cargo check --verbose --no-default-features --features "float_experimental"
+          # Explicitly bypass rust-toolchain.toml; otherwise this job could run 1.97.
+          cargo +1.87 check --verbose
+          cargo +1.87 check --verbose --no-default-features --features "rog_experimental"
+          cargo +1.87 check --verbose --features "std float_experimental"
+          cargo +1.87 check --verbose --no-default-features --features "float_experimental"

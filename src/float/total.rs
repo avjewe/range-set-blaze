@@ -508,6 +508,7 @@ impl<T: TotalFloat> Integer for Total<T> {
     #[cfg(feature = "from_slice")]
     #[inline]
     fn from_slice(slice: impl AsRef<[Self]>) -> RangeSetBlaze<Self> {
+        // TODO Investigate applying the ordered float transform in SIMD chunks here.
         // no way to do the fancy thing
         RangeSetBlaze::from_iter(slice.as_ref())
     }
