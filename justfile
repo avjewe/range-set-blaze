@@ -11,6 +11,7 @@
 check-all:
     cargo check-all
     just fmt-check
+    @echo "For additional WASM coverage, run: just test-wasm"
 
 # Run all stable CI checks locally
 ci: clippy test-stable

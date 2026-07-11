@@ -50,7 +50,7 @@ The crate's main traits are
 [2]: https://docs.rs/range-set-blaze/latest/range_set_blaze/trait.SortedDisjoint.html#table-of-contents
 [3]: https://docs.rs/range-set-blaze/latest/range_set_blaze/trait.SortedDisjointMap.html#table-of-contents
 
-no_std, WASM, and embedded
+`no_std`, WASM, and embedded
 --------------------------
 
 The crate supports `no_std`, WASM, and embedded (with alloc) projects. For `no_std`, etc., Use the command:

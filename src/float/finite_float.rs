@@ -64,7 +64,7 @@ pub trait FiniteFloat:
 }
 
 /// Crate-private encoding and arithmetic machinery for finite floats.
-pub(crate) trait FiniteFloatImpl:
+pub(super) trait FiniteFloatImpl:
     FiniteFloat + Default + Copy + Clone + Debug + Send + Sync + 'static
 {
     /// The result of `to_bits()` on the wrapped type, e.g. u64

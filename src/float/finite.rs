@@ -684,15 +684,21 @@ impl<T: FiniteFloat> Integer for Finite<T> {
 mod tests {
     use super::*;
     use crate::Integer;
+    #[cfg(not(target_arch = "wasm32"))]
     use std::hint::black_box;
+    #[cfg(not(target_arch = "wasm32"))]
     use std::panic::{AssertUnwindSafe, catch_unwind};
     use std::vec;
     use std::vec::Vec;
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn panics(f: impl FnOnce()) -> bool {
         catch_unwind(AssertUnwindSafe(f)).is_err()
     }
 
+    // WASM targets currently abort instead of unwinding, so `catch_unwind`
+    // cannot observe the expected constructor panics there.
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn safe_constructors_preserve_finite_invariant() {
         assert_eq!(ff32(-0.0).into_inner().to_bits(), 0);

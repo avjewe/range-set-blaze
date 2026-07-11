@@ -86,8 +86,8 @@ fn main() {
     }
     println!(
         "\n{} disjoint ranges cover all {} in-scope f32 values.",
-        separate_with_underscores(term_map.range_values().count()),
-        separate_with_underscores(term_map.len())
+        separate_with_underscores(&term_map.range_values().count()),
+        separate_with_underscores(&term_map.len())
     );
     println!(
         "Mean terms per in-scope f32 value (each value weighted equally): {:.2}",
@@ -95,7 +95,7 @@ fn main() {
     );
 }
 
-fn separate_with_underscores(value: impl ToString) -> String {
+fn separate_with_underscores(value: &impl ToString) -> String {
     let mut value = value.to_string();
     let mut index = value.len();
     while index > 3 {
